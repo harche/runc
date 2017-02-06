@@ -192,6 +192,35 @@ func (r *runner) terminalinfo() *libcontainer.TerminalInfo {
 	return libcontainer.NewTerminalInfo(r.container.ID())
 }
 
+func CreateDeltaDiskImage(deltaDiskDirectory, diskPath string) (string, error) {
+	deltaImagePath, err := exec.LookPath("qemu-img")
+	if err != nil {
+		return "", fmt.Errorf("qemu-img is not installed on your PATH. Please, install it to run isolated qemu container")
+	}
+
+	currentDir, err := os.Getwd()
+	if err != nil {
+		return "", fmt.Errorf("Could not determine the current directory")
+	}
+
+	err = os.Chdir(deltaDiskDirectory)
+	if err != nil {
+		return "", fmt.Errorf("Could not changed to directory %s", deltaDiskDirectory)
+	}
+
+	err = exec.Command(deltaImagePath, "create", "-f", "qcow2", "-b", diskPath, "disk.img").Run()
+	if err != nil {
+		return "", fmt.Errorf("Could not execute qemu-img")
+	}
+
+	err = os.Chdir(currentDir)
+	if err != nil {
+		return "", fmt.Errorf("Could not changed to directory %s", currentDir)
+	}
+
+	return deltaDiskDirectory + "/disk.img", nil
+}
+
 func CreateSeedImage(seedDirectory string) (string, error) {
 	getisoimagePath, err := exec.LookPath("genisoimage")
 	if err != nil {
@@ -278,6 +307,7 @@ func (r *runner) run(config *specs.Process) (int, error) {
 	logrus.Debugf("Testing debug from logrus")
 	CreateSeedImage("/tmp/disk_image")
 	logrus.Debugf("After seed image")
+	CreateDeltaDiskImage("/tmp/delta_image_out", "/var/lib/libvirt/images/disk.img.orig")
 
 	process, err := newProcess(*config)
 	if err != nil {
