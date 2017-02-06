@@ -5,8 +5,10 @@ package main
 import (
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"net"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 	"syscall"
@@ -190,7 +192,93 @@ func (r *runner) terminalinfo() *libcontainer.TerminalInfo {
 	return libcontainer.NewTerminalInfo(r.container.ID())
 }
 
+func CreateSeedImage(seedDirectory string) (string, error) {
+	getisoimagePath, err := exec.LookPath("genisoimage")
+	if err != nil {
+		return "", fmt.Errorf("genisoimage is not installed on your PATH. Please, install it to run isolated container")
+	}
+
+	// Create user-data to be included in seed.img
+	userDataString := `#cloud-config
+runcmd:
+ - mount -t 9p -o trans=virtio share_dir /mnt
+ - chroot /mnt %s > /dev/hvc1 2>&1
+ - init 0
+`
+
+	metaDataString := `#cloud-config
+network-interfaces: |
+  auto eth0
+  iface eth0 inet static
+  address 192.168.1.1
+  netmask 255.255.255.0
+  gateway 192.168.1.22
+`
+
+	var command string
+	//	if len(lc.container.Args) > 0 {
+	//		args := []string{}
+	//		for _, arg := range lc.container.Args {
+	//			if strings.Contains(arg, " ") {
+	//				args = append(args, fmt.Sprintf("'%s'", arg))
+	//			} else {
+	//				args = append(args, arg)
+	//			}
+	//		}
+	//		argsAsString := strings.Join(args, " ")
+
+	//		command = fmt.Sprintf("%s %s", lc.container.Path, argsAsString)
+	//	} else {
+	//		command = lc.container.Path
+	//	}
+	command = "ls"
+
+	userData := []byte(fmt.Sprintf(userDataString, command))
+	//metaData := []byte(fmt.Sprintf(metaDataString, lc.container.NetworkSettings.Networks["bridge"].IPAddress, netMask, lc.container.NetworkSettings.Networks["bridge"].Gateway))
+	metaData := []byte(fmt.Sprintf(metaDataString))
+
+	currentDir, err := os.Getwd()
+	if err != nil {
+		return "", fmt.Errorf("Could not determine the current directory")
+	}
+
+	err = os.Chdir(seedDirectory)
+	if err != nil {
+		return "", fmt.Errorf("Could not changed to directory %s", seedDirectory)
+	}
+
+	writeErrorUserData := ioutil.WriteFile("user-data", userData, 0700)
+	if writeErrorUserData != nil {
+		//return "", fmt.Errorf("Could not write user-data to /var/run/docker-qemu/%s", lc.container.ID)
+		return "", fmt.Errorf("Could not write user-data to /var/run/docker-qemu/%s", "DDDDD")
+	}
+
+	writeErrorMetaData := ioutil.WriteFile("meta-data", metaData, 0700)
+	if writeErrorMetaData != nil {
+		//return "", fmt.Errorf("Could not write meta-data to /var/run/docker-qemu/%s", lc.container.ID)
+		return "", fmt.Errorf("Could not write meta-data to /var/run/docker-qemu/%s", "DDDD")
+	}
+
+	logrus.Debugf("genisoimage path: %s", getisoimagePath)
+
+	err = exec.Command(getisoimagePath, "-output", "seed.img", "-volid", "cidata", "-joliet", "-rock", "user-data", "meta-data").Run()
+	if err != nil {
+		return "", fmt.Errorf("Could not execute genisoimage")
+	}
+
+	err = os.Chdir(currentDir)
+	if err != nil {
+		return "", fmt.Errorf("Could not changed to directory %s", currentDir)
+	}
+
+	return seedDirectory + "/seed.img", nil
+}
+
 func (r *runner) run(config *specs.Process) (int, error) {
+	logrus.Debugf("Testing debug from logrus")
+	CreateSeedImage("/tmp/disk_image")
+	logrus.Debugf("After seed image")
+
 	process, err := newProcess(*config)
 	if err != nil {
 		r.destroy()
