@@ -262,11 +262,12 @@ network-interfaces: |
 		}
 		argsAsString := strings.Join(args, " ")
 
-		command = fmt.Sprintf("%s %s", "/test", argsAsString)
-	} else {
+		//command = fmt.Sprintf("%s %s", "/test", argsAsString)
+		command = fmt.Sprintf("%s", argsAsString)
+	} /*else {
 		command = "/test"
 		//command = command = lc.container.Path
-	}
+	}*/
 	//command = "ls"
 
 	userData := []byte(fmt.Sprintf(userDataString, command))
