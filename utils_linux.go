@@ -3,6 +3,7 @@
 package main
 
 import (
+	"encoding/xml"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -15,6 +16,7 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/coreos/go-systemd/activation"
+	libvirt "github.com/libvirt/libvirt-go"
 	"github.com/opencontainers/runc/libcontainer"
 	"github.com/opencontainers/runc/libcontainer/cgroups/systemd"
 	"github.com/opencontainers/runc/libcontainer/specconv"
@@ -303,11 +305,391 @@ network-interfaces: |
 	return seedDirectory + "/seed.img", nil
 }
 
+type vmBaseConfig struct {
+	numCPU           int
+	DefaultMaxCpus   int
+	DefaultMaxMem    int
+	Memory           int
+	OriginalDiskPath string
+}
+
+type vmMemory struct {
+	Unit    string `xml:"unit,attr"`
+	Content int    `xml:",chardata"`
+}
+
+type maxmem struct {
+	Unit    string `xml:"unit,attr"`
+	Slots   string `xml:"slots,attr"`
+	Content int    `xml:",chardata"`
+}
+
+type vcpu struct {
+	Placement string `xml:"placement,attr"`
+	Current   string `xml:"current,attr"`
+	Content   int    `xml:",chardata"`
+}
+
+type cell struct {
+	Id     string `xml:"id,attr"`
+	Cpus   string `xml:"cpus,attr"`
+	Memory string `xml:"memory,attr"`
+	Unit   string `xml:"unit,attr"`
+}
+
+type vmCpu struct {
+	Mode string `xml:"mode,attr"`
+}
+
+type ostype struct {
+	Arch    string `xml:"arch,attr"`
+	Machine string `xml:"machine,attr"`
+	Content string `xml:",chardata"`
+}
+
+type domainos struct {
+	Supported string `xml:"supported,attr"`
+	Type      ostype `xml:"type"`
+}
+
+type feature struct {
+	Acpi acpi `xml:"acpi"`
+}
+
+type acpi struct {
+}
+
+type fspath struct {
+	Dir string `xml:"dir,attr"`
+}
+
+type filesystem struct {
+	Type       string `xml:"type,attr"`
+	Accessmode string `xml:"accessmode,attr"`
+	Source     fspath `xml:"source"`
+	Target     fspath `xml:"target"`
+}
+
+type diskdriver struct {
+	Type string `xml:"type,attr"`
+	Name string `xml:"name,attr"`
+}
+
+type disksource struct {
+	File string `xml:"file,attr"`
+}
+
+type diskformat struct {
+	Type string `xml:"type,attr"`
+}
+
+type backingstore struct {
+	Type   string     `xml:"type,attr"`
+	Index  string     `xml:"index,attr"`
+	Format diskformat `xml:"format"`
+	Source disksource `xml:"source"`
+}
+
+type disktarget struct {
+	Dev string `xml:"dev,attr"`
+	Bus string `xml:"bus,attr"`
+}
+
+type readonly struct {
+}
+
+type controller struct {
+	Type  string `xml:"type,attr"`
+	Model string `xml:"model,attr"`
+}
+
+type disk struct {
+	Type         string        `xml:"type,attr"`
+	Device       string        `xml:"device,attr"`
+	Driver       diskdriver    `xml:"driver"`
+	Source       disksource    `xml:"source"`
+	BackingStore *backingstore `xml:"backingstore,omitempty"`
+	Target       disktarget    `xml:"target"`
+	Readonly     *readonly     `xml:"readonly,omitempty"`
+}
+
+type channsrc struct {
+	Mode string `xml:"mode,attr"`
+	Path string `xml:"path,attr"`
+}
+
+type constgt struct {
+	Type string `xml:"type,attr,omitempty"`
+	Port string `xml:"port,attr"`
+}
+
+type console struct {
+	Type   string   `xml:"type,attr"`
+	Source channsrc `xml:"source"`
+	Target constgt  `xml:"target"`
+}
+
+type device struct {
+	Emulator          string       `xml:"emulator"`
+	Filesystems       []filesystem `xml:"filesystem"`
+	Disks             []disk       `xml:"disk"`
+	Consoles          []console    `xml:"console"`
+	NetworkInterfaces []nic        `xml:"interface"`
+	Controller        []controller `xml:"controller"`
+}
+
+type seclab struct {
+	Type string `xml:"type,attr"`
+}
+
+type domain struct {
+	XMLName    xml.Name  `xml:"domain"`
+	Type       string    `xml:"type,attr"`
+	Name       string    `xml:"name"`
+	Memory     vmMemory  `xml:"memory"`
+	MaxMem     *maxmem   `xml:"maxMemory,omitempty"`
+	VCpu       vcpu      `xml:"vcpu"`
+	OS         domainos  `xml:"os"`
+	Features   []feature `xml:"features"`
+	CPU        vmCpu     `xml:"cpu"`
+	OnPowerOff string    `xml:"on_poweroff"`
+	OnReboot   string    `xml:"on_reboot"`
+	OnCrash    string    `xml:"on_crash"`
+	Devices    device    `xml:"devices"`
+	SecLabel   seclab    `xml:"seclabel"`
+}
+
+type nicmac struct {
+	Address string `xml:"address,attr"`
+}
+
+type nicsrc struct {
+	Bridge string `xml:"bridge,attr"`
+}
+
+type nicmodel struct {
+	Type string `xml:"type,attr"`
+}
+
+type nic struct {
+	Type   string   `xml:"type,attr"`
+	Mac    nicmac   `xml:"mac"`
+	Source nicsrc   `xml:"source"`
+	Model  nicmodel `xml:"model"`
+}
+
+func DomainXml() (string, error) {
+	baseCfg := &vmBaseConfig{
+		numCPU:           1,
+		DefaultMaxCpus:   2,
+		DefaultMaxMem:    256,
+		Memory:           256,
+		OriginalDiskPath: "/var/lib/libvirt/images/disk.img.orig",
+	}
+
+	// Create directory for seed image and delta disk image
+	//directory := lc.container.Config.QemuDirectory
+	directory := "/tmp/delta_image_out"
+
+	deltaDiskImageLocation, err := CreateDeltaDiskImage(directory, baseCfg.OriginalDiskPath)
+	if err != nil {
+		return "", fmt.Errorf("Could not create delta disk image")
+	}
+
+	logrus.Debugf("Delta disk image location: %s", deltaDiskImageLocation)
+
+	// Domain XML Formation
+	dom := &domain{
+		Type: "kvm",
+		//Name: lc.container.ID[0:12],
+		Name: "fdsdsfdsf",
+	}
+
+	dom.Memory.Unit = "MiB"
+	dom.Memory.Content = baseCfg.Memory
+
+	dom.VCpu.Current = strconv.Itoa(baseCfg.numCPU)
+	dom.VCpu.Content = baseCfg.numCPU
+
+	dom.OS.Supported = "yes"
+	dom.OS.Type.Content = "hvm"
+
+	acpiFeature := feature{
+		Acpi: acpi{},
+	}
+	dom.Features = append(dom.Features, acpiFeature)
+
+	dom.SecLabel.Type = "none"
+
+	dom.CPU.Mode = "host-model"
+
+	dom.OnPowerOff = "destroy"
+	dom.OnReboot = "destroy"
+	dom.OnCrash = "destroy"
+
+	diskimage := disk{
+		Type:   "file",
+		Device: "disk",
+		Driver: diskdriver{
+			Name: "qemu",
+			Type: "qcow2",
+		},
+		Source: disksource{
+			File: deltaDiskImageLocation,
+		},
+		BackingStore: &backingstore{
+			Type:  "file",
+			Index: "1",
+			Format: diskformat{
+				Type: "raw",
+			},
+			Source: disksource{
+				File: baseCfg.OriginalDiskPath,
+			},
+		},
+		Target: disktarget{
+			Dev: "sda",
+			Bus: "scsi",
+		},
+	}
+	dom.Devices.Disks = append(dom.Devices.Disks, diskimage)
+
+	seedimage := disk{
+		Type:   "file",
+		Device: "cdrom",
+		Driver: diskdriver{
+			Name: "qemu",
+			Type: "raw",
+		},
+		Source: disksource{
+			//File: fmt.Sprintf("%s/seed.img", lc.container.Config.QemuDirectory),
+			File: fmt.Sprintf("%s/seed.img", directory),
+		},
+		Target: disktarget{
+			Dev: "sdb",
+			Bus: "scsi",
+		},
+		Readonly: &readonly{},
+	}
+	dom.Devices.Disks = append(dom.Devices.Disks, seedimage)
+
+	storageController := controller{
+		Type:  "scsi",
+		Model: "virtio-scsi",
+	}
+	dom.Devices.Controller = append(dom.Devices.Controller, storageController)
+
+	//macAddress := lc.container.CommonContainer.NetworkSettings.Networks["bridge"].MacAddress
+	macAddress := "aa:bb:cc:dd:ee:ff"
+	networkInterface := nic{
+		Type: "bridge",
+		Mac: nicmac{
+			Address: macAddress,
+		},
+		Source: nicsrc{
+			Bridge: "docker0",
+		},
+		Model: nicmodel{
+			Type: "virtio",
+		},
+	}
+	dom.Devices.NetworkInterfaces = append(dom.Devices.NetworkInterfaces, networkInterface)
+
+	fs := filesystem{
+		Type:       "mount",
+		Accessmode: "passthrough",
+		Source: fspath{
+			//Dir: lc.container.BaseFS,
+			Dir: "/home/harshal/go/src/github.com/opencontainers/runc/mycontainer",
+		},
+		Target: fspath{
+			Dir: "share_dir",
+		},
+	}
+	dom.Devices.Filesystems = append(dom.Devices.Filesystems, fs)
+
+	serialConsole := console{
+		Type: "unix",
+		Source: channsrc{
+			Mode: "bind",
+			//Path: fmt.Sprintf("%s/serial.sock", lc.container.Config.QemuDirectory),
+			Path: fmt.Sprintf("%s/serial.sock", directory),
+		},
+		Target: constgt{
+			Type: "serial",
+			Port: "0",
+		},
+	}
+	dom.Devices.Consoles = append(dom.Devices.Consoles, serialConsole)
+	//logrus.Debugf("Serial console socket location: %s", fmt.Sprintf("%s/serial.sock", lc.container.Config.QemuDirectory))
+	logrus.Debugf("Serial console socket location: %s", fmt.Sprintf("%s/serial.sock", directory))
+	vmConsole := console{
+		Type: "unix",
+		Source: channsrc{
+			Mode: "bind",
+			//Path: fmt.Sprintf("%s/arbritary.sock", lc.container.Config.QemuDirectory),
+			Path: fmt.Sprintf("%s/arbritary.sock", directory),
+		},
+		Target: constgt{
+			Type: "virtio",
+			Port: "1",
+		},
+	}
+	dom.Devices.Consoles = append(dom.Devices.Consoles, vmConsole)
+
+	appConsole := console{
+		Type: "unix",
+		Source: channsrc{
+			Mode: "bind",
+			//Path: fmt.Sprintf("%s/app.sock", lc.container.Config.QemuDirectory),
+			Path: fmt.Sprintf("%s/app.sock", directory),
+		},
+		Target: constgt{
+			Type: "virtio",
+			Port: "2",
+		},
+	}
+	dom.Devices.Consoles = append(dom.Devices.Consoles, appConsole)
+	//logrus.Debugf("Application console socket location: %s", fmt.Sprintf("%s/app.sock", lc.container.Config.QemuDirectory))
+	logrus.Debugf("Application console socket location: %s", fmt.Sprintf("%s/app.sock", directory))
+	data, err := xml.Marshal(dom)
+	if err != nil {
+		return "", err
+	}
+	return string(data), nil
+}
+
 func (r *runner) run(config *specs.Process) (int, error) {
 	logrus.Debugf("Testing debug from logrus")
 	CreateSeedImage("/tmp/disk_image")
 	logrus.Debugf("After seed image")
 	CreateDeltaDiskImage("/tmp/delta_image_out", "/var/lib/libvirt/images/disk.img.orig")
+	conn, err := libvirt.NewConnect("qemu:///system")
+	if err != nil {
+		fmt.Errorf("Failed")
+	}
+	defer conn.Close()
+
+	doms, err := conn.ListAllDomains(libvirt.CONNECT_LIST_DOMAINS_ACTIVE)
+	if err != nil {
+		fmt.Errorf("Failed")
+	}
+
+	logrus.Debugf("%d running domains:\n", len(doms))
+	for _, dom := range doms {
+		name, err := dom.GetName()
+		if err == nil {
+			logrus.Debugf("  %s\n", name)
+		}
+		dom.Free()
+	}
+
+	domainXml, err := DomainXml()
+	if err != nil {
+		logrus.Error("Fail to get domain xml configuration:", err)
+
+	}
+	logrus.Debugf("domainXML: %v", domainXml)
 
 	process, err := newProcess(*config)
 	if err != nil {
