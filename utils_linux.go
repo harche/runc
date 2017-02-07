@@ -12,6 +12,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"syscall"
 
 	"github.com/Sirupsen/logrus"
@@ -189,13 +190,14 @@ type runner struct {
 	container       libcontainer.Container
 	create          bool
 	qemuDirectory   string
+	args            []string
 }
 
 func (r *runner) terminalinfo() *libcontainer.TerminalInfo {
 	return libcontainer.NewTerminalInfo(r.container.ID())
 }
 
-func CreateDeltaDiskImage(deltaDiskDirectory, diskPath string) (string, error) {
+func (r *runner) CreateDeltaDiskImage(deltaDiskDirectory, diskPath string) (string, error) {
 	deltaImagePath, err := exec.LookPath("qemu-img")
 	if err != nil {
 		return "", fmt.Errorf("qemu-img is not installed on your PATH. Please, install it to run isolated qemu container")
@@ -224,7 +226,7 @@ func CreateDeltaDiskImage(deltaDiskDirectory, diskPath string) (string, error) {
 	return deltaDiskDirectory + "/disk.img", nil
 }
 
-func CreateSeedImage(seedDirectory string) (string, error) {
+func (r *runner) CreateSeedImage(seedDirectory string) (string, error) {
 	getisoimagePath, err := exec.LookPath("genisoimage")
 	if err != nil {
 		return "", fmt.Errorf("genisoimage is not installed on your PATH. Please, install it to run isolated container")
@@ -248,22 +250,23 @@ network-interfaces: |
 `
 
 	var command string
-	//	if len(lc.container.Args) > 0 {
-	//		args := []string{}
-	//		for _, arg := range lc.container.Args {
-	//			if strings.Contains(arg, " ") {
-	//				args = append(args, fmt.Sprintf("'%s'", arg))
-	//			} else {
-	//				args = append(args, arg)
-	//			}
-	//		}
-	//		argsAsString := strings.Join(args, " ")
 
-	//		command = fmt.Sprintf("%s %s", lc.container.Path, argsAsString)
-	//	} else {
-	//		command = lc.container.Path
-	//	}
-	command = "ls"
+	if len(r.args) > 0 {
+		args := []string{}
+		for _, arg := range r.args {
+			if strings.Contains(arg, " ") {
+				args = append(args, fmt.Sprintf("'%s'", arg))
+			} else {
+				args = append(args, arg)
+			}
+		}
+		argsAsString := strings.Join(args, " ")
+
+		command = fmt.Sprintf("%s %s", "/test", argsAsString)
+	} else {
+		command = "/test"
+	}
+	//command = "ls"
 
 	userData := []byte(fmt.Sprintf(userDataString, command))
 	//metaData := []byte(fmt.Sprintf(metaDataString, lc.container.NetworkSettings.Networks["bridge"].IPAddress, netMask, lc.container.NetworkSettings.Networks["bridge"].Gateway))
@@ -489,10 +492,9 @@ func (r *runner) DomainXml() (string, error) {
 	}
 
 	// Create directory for seed image and delta disk image
-	//directory := lc.container.Config.QemuDirectory
 	directory := r.qemuDirectory
 
-	deltaDiskImageLocation, err := CreateDeltaDiskImage(directory, baseCfg.OriginalDiskPath)
+	deltaDiskImageLocation, err := r.CreateDeltaDiskImage(directory, baseCfg.OriginalDiskPath)
 	if err != nil {
 		return "", fmt.Errorf("Could not create delta disk image")
 	}
@@ -562,7 +564,6 @@ func (r *runner) DomainXml() (string, error) {
 			Type: "raw",
 		},
 		Source: disksource{
-			//File: fmt.Sprintf("%s/seed.img", lc.container.Config.QemuDirectory),
 			File: fmt.Sprintf("%s/seed.img", directory),
 		},
 		Target: disktarget{
@@ -668,12 +669,12 @@ func (r *runner) run(config *specs.Process) (int, error) {
 	}
 
 	r.qemuDirectory = qemuDirectory
-
+	r.args = config.Args
 	logrus.Debugf("Testing debug from logrus")
 
-	CreateSeedImage(qemuDirectory)
+	r.CreateSeedImage(qemuDirectory)
 	logrus.Debugf("After seed image")
-	CreateDeltaDiskImage(qemuDirectory, "/var/lib/libvirt/images/disk.img.orig")
+	//CreateDeltaDiskImage(qemuDirectory, "/var/lib/libvirt/images/disk.img.orig")
 	conn, err := libvirt.NewConnect("qemu:///system")
 	if err != nil {
 		fmt.Errorf("Failed")
@@ -688,16 +689,16 @@ func (r *runner) run(config *specs.Process) (int, error) {
 	logrus.Debugf("domainXML: %v", domainXml)
 
 	//var domain libvirt.VirDomain
-	domain, err := conn.DomainDefineXML(domainXml)
-	if err != nil {
-		logrus.Error("Failed to launch domain ", err)
+	//	domain, err := conn.DomainDefineXML(domainXml)
+	//	if err != nil {
+	//		logrus.Error("Failed to launch domain ", err)
 
-	}
+	//	}
 
-	if domain == nil {
-		logrus.Error("Failed to launch domain as no domain in LibvirtContext")
+	//	if domain == nil {
+	//		logrus.Error("Failed to launch domain as no domain in LibvirtContext")
 
-	}
+	//	}
 
 	//	err = domain.Create()
 	//	if err != nil {
@@ -707,7 +708,7 @@ func (r *runner) run(config *specs.Process) (int, error) {
 
 	//	logrus.Infof("Domain has started: %v", "AAAADDDD")
 	logrus.Debugf("CONTAINER STRUCT")
-	logrus.Debugf("%+v\n", r.container.ID())
+	logrus.Debugf("%+v\n", config.Args[0])
 	logrus.Debugf("CONTAINER STRUCT")
 
 	process, err := newProcess(*config)
