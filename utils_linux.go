@@ -265,6 +265,7 @@ network-interfaces: |
 		command = fmt.Sprintf("%s %s", "/test", argsAsString)
 	} else {
 		command = "/test"
+		//command = command = lc.container.Path
 	}
 	//command = "ls"
 
@@ -601,7 +602,7 @@ func (r *runner) DomainXml() (string, error) {
 		Accessmode: "passthrough",
 		Source: fspath{
 			//Dir: lc.container.BaseFS,
-			Dir: "/home/harshal/go/src/github.com/opencontainers/runc/mycontainer",
+			Dir: r.container.Config().Rootfs,
 		},
 		Target: fspath{
 			Dir: "share_dir",
@@ -613,7 +614,6 @@ func (r *runner) DomainXml() (string, error) {
 		Type: "unix",
 		Source: channsrc{
 			Mode: "bind",
-			//Path: fmt.Sprintf("%s/serial.sock", lc.container.Config.QemuDirectory),
 			Path: fmt.Sprintf("%s/serial.sock", directory),
 		},
 		Target: constgt{
@@ -708,7 +708,7 @@ func (r *runner) run(config *specs.Process) (int, error) {
 
 	//	logrus.Infof("Domain has started: %v", "AAAADDDD")
 	logrus.Debugf("CONTAINER STRUCT")
-	logrus.Debugf("%+v\n", config.Args[0])
+	logrus.Debugf("%+v\n", r.container.Config().Rootfs)
 	logrus.Debugf("CONTAINER STRUCT")
 
 	process, err := newProcess(*config)
