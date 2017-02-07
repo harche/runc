@@ -670,26 +670,32 @@ func (r *runner) run(config *specs.Process) (int, error) {
 	}
 	defer conn.Close()
 
-	doms, err := conn.ListAllDomains(libvirt.CONNECT_LIST_DOMAINS_ACTIVE)
-	if err != nil {
-		fmt.Errorf("Failed")
-	}
-
-	logrus.Debugf("%d running domains:\n", len(doms))
-	for _, dom := range doms {
-		name, err := dom.GetName()
-		if err == nil {
-			logrus.Debugf("  %s\n", name)
-		}
-		dom.Free()
-	}
-
 	domainXml, err := DomainXml()
 	if err != nil {
 		logrus.Error("Fail to get domain xml configuration:", err)
 
 	}
 	logrus.Debugf("domainXML: %v", domainXml)
+
+	//var domain libvirt.VirDomain
+	domain, err := conn.DomainDefineXML(domainXml)
+	if err != nil {
+		logrus.Error("Failed to launch domain ", err)
+
+	}
+
+	if domain == nil {
+		logrus.Error("Failed to launch domain as no domain in LibvirtContext")
+
+	}
+
+	err = domain.Create()
+	if err != nil {
+		logrus.Error("Fail to start qemu isolated container ", err)
+
+	}
+
+	//	logrus.Infof("Domain has started: %v", "AAAADDDD")
 
 	process, err := newProcess(*config)
 	if err != nil {
