@@ -188,6 +188,7 @@ type runner struct {
 	consoleSocket   string
 	container       libcontainer.Container
 	create          bool
+	qemuDirectory   string
 }
 
 func (r *runner) terminalinfo() *libcontainer.TerminalInfo {
@@ -489,7 +490,7 @@ func (r *runner) DomainXml() (string, error) {
 
 	// Create directory for seed image and delta disk image
 	//directory := lc.container.Config.QemuDirectory
-	directory := "/tmp/delta_image_out"
+	directory := r.qemuDirectory
 
 	deltaDiskImageLocation, err := CreateDeltaDiskImage(directory, baseCfg.OriginalDiskPath)
 	if err != nil {
@@ -659,10 +660,20 @@ func (r *runner) DomainXml() (string, error) {
 }
 
 func (r *runner) run(config *specs.Process) (int, error) {
+	qemuDirectory := fmt.Sprintf("/var/run/docker-qemu/%s", r.container.ID())
+	err := os.MkdirAll(qemuDirectory, 0700)
+
+	if err != nil {
+		logrus.Error("Could not create directory /var/run/docker-qemu/%s : %s", r.container.ID(), err)
+	}
+
+	r.qemuDirectory = qemuDirectory
+
 	logrus.Debugf("Testing debug from logrus")
-	CreateSeedImage("/tmp/disk_image")
+
+	CreateSeedImage(qemuDirectory)
 	logrus.Debugf("After seed image")
-	CreateDeltaDiskImage("/tmp/delta_image_out", "/var/lib/libvirt/images/disk.img.orig")
+	CreateDeltaDiskImage(qemuDirectory, "/var/lib/libvirt/images/disk.img.orig")
 	conn, err := libvirt.NewConnect("qemu:///system")
 	if err != nil {
 		fmt.Errorf("Failed")
