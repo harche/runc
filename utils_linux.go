@@ -478,7 +478,7 @@ type nic struct {
 	Model  nicmodel `xml:"model"`
 }
 
-func DomainXml() (string, error) {
+func (r *runner) DomainXml() (string, error) {
 	baseCfg := &vmBaseConfig{
 		numCPU:           1,
 		DefaultMaxCpus:   2,
@@ -501,8 +501,7 @@ func DomainXml() (string, error) {
 	// Domain XML Formation
 	dom := &domain{
 		Type: "kvm",
-		//Name: lc.container.ID[0:12],
-		Name: "fdsdsfdsf",
+		Name: r.container.ID(),
 	}
 
 	dom.Memory.Unit = "MiB"
@@ -670,7 +669,7 @@ func (r *runner) run(config *specs.Process) (int, error) {
 	}
 	defer conn.Close()
 
-	domainXml, err := DomainXml()
+	domainXml, err := r.DomainXml()
 	if err != nil {
 		logrus.Error("Fail to get domain xml configuration:", err)
 
@@ -689,13 +688,16 @@ func (r *runner) run(config *specs.Process) (int, error) {
 
 	}
 
-	err = domain.Create()
-	if err != nil {
-		logrus.Error("Fail to start qemu isolated container ", err)
+	//	err = domain.Create()
+	//	if err != nil {
+	//		logrus.Error("Fail to start qemu isolated container ", err)
 
-	}
+	//	}
 
 	//	logrus.Infof("Domain has started: %v", "AAAADDDD")
+	logrus.Debugf("CONTAINER STRUCT")
+	logrus.Debugf("%+v\n", r.container.ID())
+	logrus.Debugf("CONTAINER STRUCT")
 
 	process, err := newProcess(*config)
 	if err != nil {
