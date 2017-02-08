@@ -3,6 +3,7 @@
 package main
 
 import (
+	"bufio"
 	"encoding/xml"
 	"errors"
 	"fmt"
@@ -14,6 +15,7 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/coreos/go-systemd/activation"
@@ -251,6 +253,7 @@ network-interfaces: |
 
 	var command string
 
+	// TODO - there is no need for > 0 check
 	if len(r.args) > 0 {
 		args := []string{}
 		for _, arg := range r.args {
@@ -661,6 +664,36 @@ func (r *runner) DomainXml() (string, error) {
 	return string(data), nil
 }
 
+func consoleReader(reader *bufio.Reader, output chan string) {
+	line := []byte{}
+	cr := false
+	emit := false
+	for {
+
+		oneByte, err := reader.ReadByte()
+		if err != nil {
+			close(output)
+			return
+		}
+		switch oneByte {
+		case '\n':
+			emit = !cr
+			cr = false
+		case '\r':
+			emit = true
+			cr = true
+		default:
+			cr = false
+			line = append(line, oneByte)
+		}
+		if emit {
+			output <- string(line)
+			line = []byte{}
+			emit = false
+		}
+	}
+}
+
 func (r *runner) run(config *specs.Process) (int, error) {
 	qemuDirectory := fmt.Sprintf("/var/run/docker-qemu/%s", r.container.ID())
 	err := os.MkdirAll(qemuDirectory, 0700)
@@ -690,27 +723,53 @@ func (r *runner) run(config *specs.Process) (int, error) {
 	logrus.Debugf("domainXML: %v", domainXml)
 
 	//var domain libvirt.VirDomain
-	//	domain, err := conn.DomainDefineXML(domainXml)
-	//	if err != nil {
-	//		logrus.Error("Failed to launch domain ", err)
+	domain, err := conn.DomainDefineXML(domainXml)
+	if err != nil {
+		logrus.Error("Failed to launch domain ", err)
 
-	//	}
+	}
 
-	//	if domain == nil {
-	//		logrus.Error("Failed to launch domain as no domain in LibvirtContext")
+	if domain == nil {
+		logrus.Error("Failed to launch domain as no domain in LibvirtContext")
 
-	//	}
+	}
 
-	//	err = domain.Create()
-	//	if err != nil {
-	//		logrus.Error("Fail to start qemu isolated container ", err)
+	err = domain.Create()
+	if err != nil {
+		logrus.Error("Fail to start qemu isolated container ", err)
 
-	//	}
+	}
 
-	//	logrus.Infof("Domain has started: %v", "AAAADDDD")
+	logrus.Infof("Domain has started: %v", "AAAADDDD")
 	logrus.Debugf("CONTAINER STRUCT")
-	logrus.Debugf("%+v\n", r.container.Config().Rootfs)
+	logrus.Debugf("%+v\n", r.container.Config().Networks[0].MacAddress)
 	logrus.Debugf("CONTAINER STRUCT")
+
+	appConsoleSockName := qemuDirectory + "/app.sock"
+
+	var consoleConn net.Conn
+	consoleConn, err = net.DialTimeout("unix", appConsoleSockName, time.Duration(10)*time.Second)
+
+	if err != nil {
+		logrus.Debugf("failed to connect  ", err.Error())
+		//fmt.Fprint("failed to connect to ", appConsoleSockName, " ", err.Error(), "\n")
+
+	}
+
+	reader := bufio.NewReaderSize(consoleConn, 256)
+
+	cout := make(chan string, 128)
+	go consoleReader(reader, cout)
+
+	for {
+		line, ok := <-cout
+		if ok {
+			//fmt.Fprintln(stdout, line)
+			fmt.Println(line)
+		} else {
+			break
+		}
+	}
 
 	process, err := newProcess(*config)
 	if err != nil {
