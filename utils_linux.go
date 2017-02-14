@@ -4,27 +4,31 @@ package main
 
 import (
 	"bufio"
+
 	"encoding/xml"
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"net"
+	//	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
+	//	"runtime"
 	"strconv"
 	"strings"
 	"syscall"
-	"time"
+	//	"time"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/coreos/go-systemd/activation"
 	libvirt "github.com/libvirt/libvirt-go"
 	"github.com/opencontainers/runc/libcontainer"
 	"github.com/opencontainers/runc/libcontainer/cgroups/systemd"
+	"github.com/opencontainers/runc/libcontainer/configs"
 	"github.com/opencontainers/runc/libcontainer/specconv"
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/urfave/cli"
+	//	"github.com/vishvananda/netns"
 )
 
 var errEmptyID = errors.New("container id cannot be empty")
@@ -728,56 +732,56 @@ func (r *runner) run(config *specs.Process) (int, error) {
 		logrus.Error("Fail to get domain xml configuration:", err)
 
 	}
-	logrus.Debugf("domainXML: %v", domainXml)
+	logrus.Infof("domainXML: %v", domainXml)
 
-	//var domain libvirt.VirDomain
-	domain, err := conn.DomainDefineXML(domainXml)
-	if err != nil {
-		logrus.Error("Failed to launch domain ", err)
+	//	//var domain libvirt.VirDomain
+	//	domain, err := conn.DomainDefineXML(domainXml)
+	//	if err != nil {
+	//		logrus.Error("Failed to launch domain ", err)
 
-	}
+	//	}
 
-	if domain == nil {
-		logrus.Error("Failed to launch domain as no domain in LibvirtContext")
+	//	if domain == nil {
+	//		logrus.Error("Failed to launch domain as no domain in LibvirtContext")
 
-	}
+	//	}
 
-	err = domain.Create()
-	if err != nil {
-		logrus.Error("Fail to start qemu isolated container ", err)
+	//	err = domain.Create()
+	//	if err != nil {
+	//		logrus.Error("Fail to start qemu isolated container ", err)
 
-	}
+	//	}
 
-	logrus.Infof("Domain has started: %v", "AAAADDDD")
-	logrus.Debugf("CONTAINER STRUCT")
-	logrus.Debugf("%+v\n", r.container.Config().Networks[0].MacAddress)
-	logrus.Debugf("CONTAINER STRUCT")
+	//	logrus.Infof("Domain has started: %v", "AAAADDDD")
+	//	logrus.Debugf("CONTAINER STRUCT")
+	//	logrus.Debugf("%+v\n", r.container.Config().Networks[0].MacAddress)
+	//	logrus.Debugf("CONTAINER STRUCT")
 
-	appConsoleSockName := qemuDirectory + "/app.sock"
+	//	appConsoleSockName := qemuDirectory + "/app.sock"
 
-	var consoleConn net.Conn
-	consoleConn, err = net.DialTimeout("unix", appConsoleSockName, time.Duration(10)*time.Second)
+	//	var consoleConn net.Conn
+	//	consoleConn, err = net.DialTimeout("unix", appConsoleSockName, time.Duration(10)*time.Second)
 
-	if err != nil {
-		logrus.Debugf("failed to connect  ", err.Error())
-		//fmt.Fprint("failed to connect to ", appConsoleSockName, " ", err.Error(), "\n")
+	//	if err != nil {
+	//		logrus.Debugf("failed to connect  ", err.Error())
+	//		//fmt.Fprint("failed to connect to ", appConsoleSockName, " ", err.Error(), "\n")
 
-	}
+	//	}
 
-	reader := bufio.NewReaderSize(consoleConn, 256)
+	//	reader := bufio.NewReaderSize(consoleConn, 256)
 
-	cout := make(chan string, 128)
-	go consoleReader(reader, cout)
+	//	cout := make(chan string, 128)
+	//	go consoleReader(reader, cout)
 
-	for {
-		line, ok := <-cout
-		if ok {
-			//fmt.Fprintln(stdout, line)
-			fmt.Println(line)
-		} else {
-			break
-		}
-	}
+	//	for {
+	//		line, ok := <-cout
+	//		if ok {
+	//			//fmt.Fprintln(stdout, line)
+	//			fmt.Println(line)
+	//		} else {
+	//			break
+	//		}
+	//	}
 
 	process, err := newProcess(*config)
 	if err != nil {
@@ -804,15 +808,21 @@ func (r *runner) run(config *specs.Process) (int, error) {
 		return -1, err
 	}
 	handler := newSignalHandler(tty, r.enableSubreaper)
+
 	startFn := r.container.Start
+
 	if !r.create {
+
 		startFn = r.container.Run
 	}
+	//getStats, _ := r.container.Stats()
+	//fmt.Println("domainXML7: %+v\n", r.container.Config().Hooks.Prestart[0])
 	defer tty.Close()
 	if err := startFn(process); err != nil {
 		r.destroy()
 		return -1, err
 	}
+
 	if err := tty.ClosePostStart(); err != nil {
 		r.terminate(process)
 		r.destroy()
@@ -825,6 +835,22 @@ func (r *runner) run(config *specs.Process) (int, error) {
 			return -1, err
 		}
 	}
+	pid, err := r.container.State()
+
+	networkNamespacePath := pid.NamespacePaths[configs.NEWNET]
+	dir, err := filepath.Abs(filepath.Dir(os.Args[0]))
+
+	cmdName := dir + "/netinfo.sh"
+	cmdArgs := []string{networkNamespacePath}
+	cmdOut, err := exec.Command(cmdName, cmdArgs...).Output()
+	if err != nil {
+		fmt.Println(os.Stderr, "There was an error running the command: ", err)
+
+	}
+	out := string(cmdOut)
+
+	fmt.Printf("COMMAND OUT %s\n", out)
+
 	if r.detach || r.create {
 		return 0, nil
 	}
@@ -832,6 +858,7 @@ func (r *runner) run(config *specs.Process) (int, error) {
 	if err != nil {
 		r.terminate(process)
 	}
+
 	r.destroy()
 	return status, err
 }
