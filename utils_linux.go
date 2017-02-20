@@ -9,7 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	//	"net"
+	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -17,7 +17,7 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
-	//	"time"
+	"time"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/coreos/go-systemd/activation"
@@ -606,7 +606,8 @@ func (r *runner) DomainXml() (string, error) {
 	dom.Devices.Controller = append(dom.Devices.Controller, storageController)
 
 	//macAddress := lc.container.CommonContainer.NetworkSettings.Networks["bridge"].MacAddress
-	macAddress := "aa:bb:cc:dd:ee:ff"
+	// macAddress := "aa:bb:cc:dd:ee:ff"
+	macAddress := r.netInfo.MacAddr
 	networkInterface := nic{
 		Type: "bridge",
 		Mac: nicmac{
@@ -727,67 +728,6 @@ func (r *runner) run(config *specs.Process) (int, error) {
 	logrus.Debugf("Testing debug from logrus")
 
 	//CreateDeltaDiskImage(qemuDirectory, "/var/lib/libvirt/images/disk.img.orig")
-	conn, err := libvirt.NewConnect("qemu:///system")
-	if err != nil {
-		fmt.Errorf("Failed")
-	}
-	defer conn.Close()
-
-	domainXml, err := r.DomainXml()
-	if err != nil {
-		logrus.Error("Fail to get domain xml configuration:", err)
-
-	}
-	logrus.Infof("domainXML: %v", domainXml)
-
-	//	//var domain libvirt.VirDomain
-	//	domain, err := conn.DomainDefineXML(domainXml)
-	//	if err != nil {
-	//		logrus.Error("Failed to launch domain ", err)
-
-	//	}
-
-	//	if domain == nil {
-	//		logrus.Error("Failed to launch domain as no domain in LibvirtContext")
-
-	//	}
-
-	//	err = domain.Create()
-	//	if err != nil {
-	//		logrus.Error("Fail to start qemu isolated container ", err)
-
-	//	}
-
-	//	logrus.Infof("Domain has started: %v", "AAAADDDD")
-	//	logrus.Debugf("CONTAINER STRUCT")
-	//	logrus.Debugf("%+v\n", r.container.Config().Networks[0].MacAddress)
-	//	logrus.Debugf("CONTAINER STRUCT")
-
-	//	appConsoleSockName := qemuDirectory + "/app.sock"
-
-	//	var consoleConn net.Conn
-	//	consoleConn, err = net.DialTimeout("unix", appConsoleSockName, time.Duration(10)*time.Second)
-
-	//	if err != nil {
-	//		logrus.Debugf("failed to connect  ", err.Error())
-	//		//fmt.Fprint("failed to connect to ", appConsoleSockName, " ", err.Error(), "\n")
-
-	//	}
-
-	//	reader := bufio.NewReaderSize(consoleConn, 256)
-
-	//	cout := make(chan string, 128)
-	//	go consoleReader(reader, cout)
-
-	//	for {
-	//		line, ok := <-cout
-	//		if ok {
-	//			//fmt.Fprintln(stdout, line)
-	//			fmt.Println(line)
-	//		} else {
-	//			break
-	//		}
-	//	}
 
 	process, err := newProcess(*config)
 	if err != nil {
@@ -858,10 +798,75 @@ func (r *runner) run(config *specs.Process) (int, error) {
 	s := strings.Split(out, ",")
 
 	r.netInfo.IpAddr, r.netInfo.MacAddr, r.netInfo.NetMask, r.netInfo.GateWay = s[0], s[1], s[2], s[3]
-	//fmt.Printf("COMMAND OUT %s\n", out)
+	fmt.Printf("COMMAND OUT MAC ADDRESS %s\n", r.netInfo.MacAddr)
 
 	fmt.Printf("SPLIT OUT R NETINFO %s %s %s %s\n", r.netInfo.IpAddr, r.netInfo.MacAddr, r.netInfo.NetMask, r.netInfo.GateWay)
 	r.CreateSeedImage(qemuDirectory)
+
+	conn, err := libvirt.NewConnect("qemu:///system")
+	if err != nil {
+		fmt.Errorf("Failed")
+	}
+	defer conn.Close()
+
+	domainXml, err := r.DomainXml()
+	if err != nil {
+		logrus.Error("Fail to get domain xml configuration:", err)
+
+	}
+	logrus.Infof("domainXML: %v", domainXml)
+
+	//var domain libvirt.VirDomain
+	domain, err := conn.DomainDefineXML(domainXml)
+	if err != nil {
+		fmt.Println("FAILED DOMAIN FAILED")
+		logrus.Error("Failed to launch domain ", err)
+
+	}
+
+	if domain == nil {
+		fmt.Println("FAILED DOMAIN NIL")
+		logrus.Error("Failed to launch domain as no domain in LibvirtContext")
+
+	}
+
+	err = domain.Create()
+	if err != nil {
+		logrus.Error("Fail to start qemu isolated container ", err)
+
+	}
+
+	logrus.Infof("Domain has started: %v", "AAAADDDD")
+	logrus.Debugf("CONTAINER STRUCT")
+	logrus.Debugf("%+v\n", r.container.Config().Networks[0].MacAddress)
+	logrus.Debugf("CONTAINER STRUCT")
+
+	appConsoleSockName := qemuDirectory + "/app.sock"
+
+	var consoleConn net.Conn
+	consoleConn, err = net.DialTimeout("unix", appConsoleSockName, time.Duration(10)*time.Second)
+
+	if err != nil {
+		logrus.Debugf("failed to connect  ", err.Error())
+		//fmt.Fprint("failed to connect to ", appConsoleSockName, " ", err.Error(), "\n")
+
+	}
+
+	reader := bufio.NewReaderSize(consoleConn, 256)
+
+	cout := make(chan string, 128)
+	go consoleReader(reader, cout)
+
+	for {
+		line, ok := <-cout
+		if ok {
+			//fmt.Fprintln(stdout, line)
+			fmt.Println(line)
+		} else {
+			break
+		}
+	}
+
 	if r.detach || r.create {
 		return 0, nil
 	}
