@@ -209,6 +209,7 @@ type runner struct {
 	create          bool
 	qemuDirectory   string
 	args            []string
+	netInfo         netinfo
 }
 
 func (r *runner) CreateDeltaDiskImage(deltaDiskDirectory, diskPath string) (string, error) {
@@ -258,9 +259,9 @@ runcmd:
 network-interfaces: |
   auto eth0
   iface eth0 inet static
-  address 192.168.1.1
-  netmask 255.255.255.0
-  gateway 192.168.1.22
+  address %s
+  netmask %s
+  gateway %s
 `
 
 	var command string
@@ -287,7 +288,7 @@ network-interfaces: |
 
 	userData := []byte(fmt.Sprintf(userDataString, command))
 	//metaData := []byte(fmt.Sprintf(metaDataString, lc.container.NetworkSettings.Networks["bridge"].IPAddress, netMask, lc.container.NetworkSettings.Networks["bridge"].Gateway))
-	metaData := []byte(fmt.Sprintf(metaDataString))
+	metaData := []byte(fmt.Sprintf(metaDataString, r.netInfo.IpAddr, r.netInfo.NetMask, r.netInfo.GateWay))
 
 	currentDir, err := os.Getwd()
 	if err != nil {
@@ -497,6 +498,13 @@ type nic struct {
 	Mac    nicmac   `xml:"mac"`
 	Source nicsrc   `xml:"source"`
 	Model  nicmodel `xml:"model"`
+}
+
+type netinfo struct {
+	IpAddr  string
+	MacAddr string
+	NetMask string
+	GateWay string
 }
 
 func (r *runner) DomainXml() (string, error) {
@@ -718,8 +726,6 @@ func (r *runner) run(config *specs.Process) (int, error) {
 	r.args = config.Args
 	logrus.Debugf("Testing debug from logrus")
 
-	r.CreateSeedImage(qemuDirectory)
-	logrus.Debugf("After seed image")
 	//CreateDeltaDiskImage(qemuDirectory, "/var/lib/libvirt/images/disk.img.orig")
 	conn, err := libvirt.NewConnect("qemu:///system")
 	if err != nil {
@@ -849,8 +855,13 @@ func (r *runner) run(config *specs.Process) (int, error) {
 	}
 	out := string(cmdOut)
 
-	fmt.Printf("COMMAND OUT %s\n", out)
+	s := strings.Split(out, ",")
 
+	r.netInfo.IpAddr, r.netInfo.MacAddr, r.netInfo.NetMask, r.netInfo.GateWay = s[0], s[1], s[2], s[3]
+	//fmt.Printf("COMMAND OUT %s\n", out)
+
+	fmt.Printf("SPLIT OUT R NETINFO %s %s %s %s\n", r.netInfo.IpAddr, r.netInfo.MacAddr, r.netInfo.NetMask, r.netInfo.GateWay)
+	r.CreateSeedImage(qemuDirectory)
 	if r.detach || r.create {
 		return 0, nil
 	}
