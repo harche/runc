@@ -4,12 +4,12 @@ package main
 
 import (
 	"bufio"
-
 	"encoding/xml"
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"net"
+
+	//	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -17,7 +17,7 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
-	"time"
+	//	"time"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/coreos/go-systemd/activation"
@@ -82,6 +82,8 @@ func getDefaultImagePath(context *cli.Context) string {
 // newProcess returns a new libcontainer Process with the arguments from the
 // spec and stdio from the current process.
 func newProcess(p specs.Process) (*libcontainer.Process, error) {
+
+	p.Args = []string{"sh"}
 	lp := &libcontainer.Process{
 		Args: p.Args,
 		Env:  p.Env,
@@ -190,7 +192,6 @@ func createContainer(context *cli.Context, id string, spec *specs.Spec) (libcont
 	if err != nil {
 		return nil, err
 	}
-
 	factory, err := loadFactory(context)
 	if err != nil {
 		return nil, err
@@ -277,9 +278,8 @@ network-interfaces: |
 			}
 		}
 		argsAsString := strings.Join(args, " ")
-
-		//command = fmt.Sprintf("%s %s", "/test", argsAsString)
 		command = fmt.Sprintf("%s", argsAsString)
+
 	} /*else {
 		command = "/test"
 		//command = command = lc.container.Path
@@ -730,6 +730,7 @@ func (r *runner) run(config *specs.Process) (int, error) {
 	//CreateDeltaDiskImage(qemuDirectory, "/var/lib/libvirt/images/disk.img.orig")
 
 	process, err := newProcess(*config)
+
 	if err != nil {
 		r.destroy()
 		return -1, err
@@ -738,6 +739,7 @@ func (r *runner) run(config *specs.Process) (int, error) {
 		process.Env = append(process.Env, fmt.Sprintf("LISTEN_FDS=%d", len(r.listenFDs)), "LISTEN_PID=1")
 		process.ExtraFiles = append(process.ExtraFiles, r.listenFDs...)
 	}
+
 	rootuid, err := r.container.Config().HostUID()
 	if err != nil {
 		r.destroy()
@@ -756,13 +758,10 @@ func (r *runner) run(config *specs.Process) (int, error) {
 	handler := newSignalHandler(tty, r.enableSubreaper)
 
 	startFn := r.container.Start
-
 	if !r.create {
-
 		startFn = r.container.Run
 	}
-	//getStats, _ := r.container.Stats()
-	//fmt.Println("domainXML7: %+v\n", r.container.Config().Hooks.Prestart[0])
+
 	defer tty.Close()
 	if err := startFn(process); err != nil {
 		r.destroy()
@@ -817,57 +816,54 @@ func (r *runner) run(config *specs.Process) (int, error) {
 	logrus.Infof("domainXML: %v", domainXml)
 
 	//var domain libvirt.VirDomain
-	domain, err := conn.DomainDefineXML(domainXml)
-	if err != nil {
-		fmt.Println("FAILED DOMAIN FAILED")
-		logrus.Error("Failed to launch domain ", err)
+	//	domain, err := conn.DomainDefineXML(domainXml)
+	//	if err != nil {
+	//		fmt.Println("FAILED DOMAIN FAILED")
+	//		logrus.Error("Failed to launch domain ", err)
 
-	}
+	//	}
 
-	if domain == nil {
-		fmt.Println("FAILED DOMAIN NIL")
-		logrus.Error("Failed to launch domain as no domain in LibvirtContext")
+	//	if domain == nil {
+	//		fmt.Println("FAILED DOMAIN NIL")
+	//		logrus.Error("Failed to launch domain as no domain in LibvirtContext")
 
-	}
+	//	}
 
-	err = domain.Create()
-	if err != nil {
-		logrus.Error("Fail to start qemu isolated container ", err)
+	//	err = domain.Create()
+	//	if err != nil {
+	//		logrus.Error("Fail to start qemu isolated container ", err)
 
-	}
+	//	}
 
-	logrus.Infof("Domain has started: %v", "AAAADDDD")
-	logrus.Debugf("CONTAINER STRUCT")
-	logrus.Debugf("%+v\n", r.container.Config().Networks[0].MacAddress)
-	logrus.Debugf("CONTAINER STRUCT")
+	//	appConsoleSockName := qemuDirectory + "/app.sock"
 
-	appConsoleSockName := qemuDirectory + "/app.sock"
+	//	var consoleConn net.Conn
+	//	consoleConn, err = net.DialTimeout("unix", appConsoleSockName, time.Duration(10)*time.Second)
 
-	var consoleConn net.Conn
-	consoleConn, err = net.DialTimeout("unix", appConsoleSockName, time.Duration(10)*time.Second)
+	//	if err != nil {
+	//		logrus.Debugf("failed to connect  ", err.Error())
+	//		//fmt.Fprint("failed to connect to ", appConsoleSockName, " ", err.Error(), "\n")
 
-	if err != nil {
-		logrus.Debugf("failed to connect  ", err.Error())
-		//fmt.Fprint("failed to connect to ", appConsoleSockName, " ", err.Error(), "\n")
+	//	}
 
-	}
+	//	reader := bufio.NewReaderSize(consoleConn, 256)
 
-	reader := bufio.NewReaderSize(consoleConn, 256)
+	//	cout := make(chan string, 128)
+	//	go consoleReader(reader, cout)
 
-	cout := make(chan string, 128)
-	go consoleReader(reader, cout)
+	//	for {
+	//		line, ok := <-cout
+	//		if ok {
+	//			//fmt.Fprintln(stdout, line)
+	//			fmt.Println(line)
+	//		} else {
+	//			break
+	//		}
+	//	}
 
-	for {
-		line, ok := <-cout
-		if ok {
-			//fmt.Fprintln(stdout, line)
-			fmt.Println(line)
-		} else {
-			break
-		}
-	}
-
+	fmt.Println("HEEEEEEEE	")
 	if r.detach || r.create {
+		fmt.Println("HEEEEEEEE 22222")
 		return 0, nil
 	}
 	status, err := handler.forward(process)
