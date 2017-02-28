@@ -211,6 +211,8 @@ type runner struct {
 	qemuDirectory   string
 	args            []string
 	netInfo         netinfo
+	path            string
+	hostname        string
 }
 
 func (r *runner) CreateDeltaDiskImage(deltaDiskDirectory, diskPath string) (string, error) {
@@ -252,6 +254,8 @@ func (r *runner) CreateSeedImage(seedDirectory string) (string, error) {
 	userDataString := `#cloud-config
 runcmd:
  - mount -t 9p -o trans=virtio share_dir /mnt
+ - export PATH=%s
+ - hostname %s
  - chroot /mnt %s > /dev/hvc1 2>&1
  - init 0
 `
@@ -286,7 +290,7 @@ network-interfaces: |
 	}*/
 	//command = "ls"
 
-	userData := []byte(fmt.Sprintf(userDataString, command))
+	userData := []byte(fmt.Sprintf(userDataString, r.path, r.hostname, command))
 	//metaData := []byte(fmt.Sprintf(metaDataString, lc.container.NetworkSettings.Networks["bridge"].IPAddress, netMask, lc.container.NetworkSettings.Networks["bridge"].Gateway))
 	metaData := []byte(fmt.Sprintf(metaDataString, r.netInfo.IpAddr, r.netInfo.NetMask, r.netInfo.GateWay))
 
@@ -721,7 +725,23 @@ func (r *runner) run(config *specs.Process) (int, error) {
 
 	r.qemuDirectory = qemuDirectory
 	r.args = config.Args
-	logrus.Debugf("Testing debug from logrus")
+
+	for _, element := range config.Env {
+		envVar := strings.Split(element, "=")
+		envVarName := envVar[0]
+		envVarValue := envVar[1]
+
+		envVarName = strings.TrimSpace(envVarName)
+		envVarValue = strings.TrimSpace(envVarValue)
+
+		if envVarName == "PATH" {
+			r.path = envVarValue
+		}
+
+		if envVarName == "HOSTNAME" {
+			r.hostname = envVarValue
+		}
+	}
 
 	//CreateDeltaDiskImage(qemuDirectory, "/var/lib/libvirt/images/disk.img.orig")
 
