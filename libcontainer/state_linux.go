@@ -44,6 +44,7 @@ func destroy(c *linuxContainer) error {
 		}
 	}
 	err := c.cgroupManager.Destroy()
+
 	if rerr := os.RemoveAll(c.root); err == nil {
 		err = rerr
 	}
@@ -52,6 +53,12 @@ func destroy(c *linuxContainer) error {
 		err = herr
 	}
 	c.state = &stoppedState{c: c}
+
+	//ISOLATED
+	if rerr := os.RemoveAll("/var/run/docker-qemu/" + c.ID()); err == nil {
+		err = rerr
+	}
+
 	return err
 }
 
