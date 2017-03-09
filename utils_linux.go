@@ -796,6 +796,8 @@ func (r *runner) run(config *specs.Process) (int, error) {
 			return -1, err
 		}
 	}
+
+	// ISOLATED
 	pid, err := r.container.State()
 
 	networkNamespacePath := pid.NamespacePaths[configs.NEWNET]

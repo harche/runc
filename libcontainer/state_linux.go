@@ -64,13 +64,11 @@ func destroy(c *linuxContainer) error {
 
 	domain, err := conn.LookupDomainByName(c.ID())
 	if err != nil {
-		fmt.Println("FAILED DOMAIN FAILED")
 		logrus.Error("Failed to launch domain ", err)
 
 	}
 
 	if domain == nil {
-		fmt.Println("FAILED DOMAIN NIL")
 		logrus.Error("Failed to launch domain as no domain in LibvirtContext")
 
 	}

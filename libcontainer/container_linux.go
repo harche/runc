@@ -19,6 +19,7 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/golang/protobuf/proto"
+	libvirt "github.com/libvirt/libvirt-go"
 	"github.com/opencontainers/runc/libcontainer/cgroups"
 	"github.com/opencontainers/runc/libcontainer/configs"
 	"github.com/opencontainers/runc/libcontainer/criurpc"
@@ -444,6 +445,31 @@ func (c *linuxContainer) Pause() error {
 		if err := c.cgroupManager.Freeze(configs.Frozen); err != nil {
 			return err
 		}
+
+		//ISOLATED
+		conn, err := libvirt.NewConnect("qemu:///system")
+		if err != nil {
+			fmt.Errorf("Failed")
+		}
+		defer conn.Close()
+
+		domain, err := conn.LookupDomainByName(c.ID())
+		if err != nil {
+			logrus.Error("Failed to launch domain ", err)
+
+		}
+
+		if domain == nil {
+			logrus.Error("Failed to launch domain as no domain in LibvirtContext")
+
+		}
+
+		err = domain.Suspend()
+		if err != nil {
+			logrus.Error("Fail to suspend qemu isolated container ", err)
+
+		}
+
 		return c.state.transition(&pausedState{
 			c: c,
 		})
