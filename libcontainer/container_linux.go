@@ -490,6 +490,31 @@ func (c *linuxContainer) Resume() error {
 	if err := c.cgroupManager.Freeze(configs.Thawed); err != nil {
 		return err
 	}
+
+	//ISOLATED
+	conn, err := libvirt.NewConnect("qemu:///system")
+	if err != nil {
+		fmt.Errorf("Failed")
+	}
+	defer conn.Close()
+
+	domain, err := conn.LookupDomainByName(c.ID())
+	if err != nil {
+		logrus.Error("Failed to launch domain ", err)
+
+	}
+
+	if domain == nil {
+		logrus.Error("Failed to launch domain as no domain in LibvirtContext")
+
+	}
+
+	err = domain.Resume()
+	if err != nil {
+		logrus.Error("Fail to resume qemu isolated container ", err)
+
+	}
+
 	return c.state.transition(&runningState{
 		c: c,
 	})
