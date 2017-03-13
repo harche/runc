@@ -6,3 +6,4 @@ NETMASK=$(nsenter --net=$1 /sbin/ifconfig eth0 | sed -rn '2s/ .*:(.*)$/\1/p')
 GATEWAY=$(nsenter --net=$1 /sbin/ip route | awk '/default/ { print $3 }')
 
 echo $IP_ADDR,$MAC_ADDR,$NETMASK,$GATEWAY
+nsenter --net=$1 /sbin/ifconfig eth0 down
