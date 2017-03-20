@@ -21,10 +21,10 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/coreos/go-systemd/activation"
-	libvirt "github.com/libvirt/libvirt-go"
 	"github.com/opencontainers/runc/libcontainer"
 	"github.com/opencontainers/runc/libcontainer/cgroups/systemd"
 	"github.com/opencontainers/runc/libcontainer/configs"
+	"github.com/opencontainers/runc/hypervisor"
 	"github.com/opencontainers/runc/libcontainer/specconv"
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/urfave/cli"
@@ -820,37 +820,48 @@ func (r *runner) run(config *specs.Process) (int, error) {
 	fmt.Printf("SPLIT OUT R NETINFO %s %s %s %s\n", r.netInfo.IpAddr, r.netInfo.MacAddr, r.netInfo.NetMask, r.netInfo.GateWay)
 	r.CreateSeedImage(qemuDirectory)
 
-	conn, err := libvirt.NewConnect("qemu:///system")
-	if err != nil {
-		fmt.Errorf("Failed")
-	}
-	defer conn.Close()
-
 	domainXml, err := r.DomainXml()
 	if err != nil {
 		logrus.Error("Fail to get domain xml configuration:", err)
 
 	}
-	logrus.Infof("domainXML: %v", domainXml)
-
-	domain, err := conn.DomainDefineXML(domainXml)
+	hyperVisor, err := hypervisor.HypFactory()
+	_, err  = hyperVisor.CreateVM(domainXml)
 	if err != nil {
-		fmt.Println("FAILED DOMAIN FAILED")
-		logrus.Error("Failed to launch domain ", err)
-
+		fmt.Errorf("failed")
 	}
 
-	if domain == nil {
-		fmt.Println("FAILED DOMAIN NIL")
-		logrus.Error("Failed to launch domain as no domain in LibvirtContext")
-
-	}
-
-	err = domain.Create()
-	if err != nil {
-		logrus.Error("Fail to start qemu isolated container ", err)
-
-	}
+	//conn, err := libvirt.NewConnect("qemu:///system")
+	//if err != nil {
+	//	fmt.Errorf("Failed")
+	//}
+	//defer conn.Close()
+	//
+	//domainXml, err := r.DomainXml()
+	//if err != nil {
+	//	logrus.Error("Fail to get domain xml configuration:", err)
+	//
+	//}
+	//logrus.Infof("domainXML: %v", domainXml)
+	//
+	//domain, err := conn.DomainDefineXML(domainXml)
+	//if err != nil {
+	//	fmt.Println("FAILED DOMAIN FAILED")
+	//	logrus.Error("Failed to launch domain ", err)
+	//
+	//}
+	//
+	//if domain == nil {
+	//	fmt.Println("FAILED DOMAIN NIL")
+	//	logrus.Error("Failed to launch domain as no domain in LibvirtContext")
+	//
+	//}
+	//
+	//err = domain.Create()
+	//if err != nil {
+	//	logrus.Error("Fail to start qemu isolated container ", err)
+	//
+	//}
 
 	appConsoleSockName := qemuDirectory + "/app.sock"
 
