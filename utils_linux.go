@@ -831,37 +831,6 @@ func (r *runner) run(config *specs.Process) (int, error) {
 		fmt.Errorf("failed")
 	}
 
-	//conn, err := libvirt.NewConnect("qemu:///system")
-	//if err != nil {
-	//	fmt.Errorf("Failed")
-	//}
-	//defer conn.Close()
-	//
-	//domainXml, err := r.DomainXml()
-	//if err != nil {
-	//	logrus.Error("Fail to get domain xml configuration:", err)
-	//
-	//}
-	//logrus.Infof("domainXML: %v", domainXml)
-	//
-	//domain, err := conn.DomainDefineXML(domainXml)
-	//if err != nil {
-	//	fmt.Println("FAILED DOMAIN FAILED")
-	//	logrus.Error("Failed to launch domain ", err)
-	//
-	//}
-	//
-	//if domain == nil {
-	//	fmt.Println("FAILED DOMAIN NIL")
-	//	logrus.Error("Failed to launch domain as no domain in LibvirtContext")
-	//
-	//}
-	//
-	//err = domain.Create()
-	//if err != nil {
-	//	logrus.Error("Fail to start qemu isolated container ", err)
-	//
-	//}
 
 	appConsoleSockName := qemuDirectory + "/app.sock"
 
