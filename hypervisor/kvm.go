@@ -3,11 +3,13 @@ package hypervisor
 import (
 	"github.com/libvirt/libvirt-go"
 	"fmt"
+	"os"
 )
 
 
 type KVMVirtualMachine struct {
 	id string
+	domain *libvirt.Domain
 }
 
 func (k *KVMVirtualMachine) ID() string {
@@ -31,7 +33,18 @@ func (k *KVMVirtualMachine) Kill() error {
 }
 
 func (k *KVMVirtualMachine) Remove() error {
-	panic("implement me")
+	err := k.domain.Undefine()
+	if err != nil {
+		fmt.Println("Fail to start qemu isolated container ", err)
+		return err
+	}
+
+	if rerr := os.RemoveAll("/var/run/docker-qemu/" + k.id); err == nil {
+		err = rerr
+		return err
+	}
+
+	return nil
 }
 
 type KVMHypervisor struct{
@@ -48,10 +61,7 @@ func (k *KVMHypervisor) GetConnection(url string) (conn interface{}, err error) 
 
 func (k *KVMHypervisor) CreateVM(config interface{}) (vm VirtualMachine, err error) {
 	domainXml := config.(string)
-	if k.conn == nil {
-		hyperConn, _ := k.GetConnection("qemu:///system")
-		k.conn = hyperConn.(*libvirt.Connect)
-	}
+	KVMConnection(k)
 	defer k.conn.Close()
 
 	domain, err := k.conn.DomainDefineXML(domainXml)
@@ -73,6 +83,33 @@ func (k *KVMHypervisor) CreateVM(config interface{}) (vm VirtualMachine, err err
 	return nil, nil
 }
 
-func (k *KVMHypervisor) GetVM(id string) (vm VirtualMachine, err error) {
-	panic("implement me")
+func KVMConnection(k *KVMHypervisor) {
+	if k.conn == nil {
+		hyperConn, _ := k.GetConnection("qemu:///system")
+		k.conn = hyperConn.(*libvirt.Connect)
+	}
 }
+
+func (k *KVMHypervisor) GetVM(id string) (vm VirtualMachine, err error) {
+	KVMConnection(k)
+	defer k.conn.Close()
+
+	kvmVirtualMachine := new(KVMVirtualMachine)
+	domain, err := k.conn.LookupDomainByName(id)
+	if err != nil {
+		fmt.Println("Failed to launch domain ", err)
+
+	}
+
+	if domain == nil {
+		fmt.Println("Failed to launch domain as no domain in LibvirtContext")
+		return nil, err
+
+	}
+
+	kvmVirtualMachine.id = id
+	kvmVirtualMachine.domain = domain
+
+	return kvmVirtualMachine, nil
+}
+

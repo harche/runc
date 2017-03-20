@@ -9,8 +9,8 @@ import (
 	"syscall"
 
 	"github.com/Sirupsen/logrus"
-	libvirt "github.com/libvirt/libvirt-go"
 	"github.com/opencontainers/runc/libcontainer/configs"
+	"github.com/opencontainers/runc/hypervisor"
 	"github.com/opencontainers/runc/libcontainer/utils"
 )
 
@@ -56,31 +56,10 @@ func destroy(c *linuxContainer) error {
 	c.state = &stoppedState{c: c}
 
 	//ISOLATED
-	conn, err := libvirt.NewConnect("qemu:///system")
-	if err != nil {
-		fmt.Errorf("Failed")
-	}
-	defer conn.Close()
-
-	domain, err := conn.LookupDomainByName(c.ID())
-	if err != nil {
-		logrus.Error("Failed to launch domain ", err)
-
-	}
-
-	if domain == nil {
-		logrus.Error("Failed to launch domain as no domain in LibvirtContext")
-
-	}
-
-	err = domain.Undefine()
-	if err != nil {
-		logrus.Error("Fail to start qemu isolated container ", err)
-
-	}
-
-	if rerr := os.RemoveAll("/var/run/docker-qemu/" + c.ID()); err == nil {
-		err = rerr
+	hyperVisor, err := hypervisor.HypFactory()
+	virtualMachine, err := hyperVisor.GetVM(c.ID())
+	if err == nil {
+		virtualMachine.Remove()
 	}
 
 	return err
