@@ -9,9 +9,27 @@ type VirtualMachine interface {
 	Remove() error
 }
 
+type NetInfo struct {
+	IpAddr  string
+	MacAddr string
+	NetMask string
+	GateWay string
+}
+
+type VirtualMachineParams struct {
+	Id      string
+	NetInfo NetInfo
+	Args    []string
+	Path    string
+	Rootfs  string
+	DiskDir string
+}
+
+
+
 type Hypervisor interface {
 	GetConnection(url string) (conn interface{}, err error)
-	CreateVM(config interface{}) (vm VirtualMachine, err error)
+	CreateVM(vmParams VirtualMachineParams) (vm VirtualMachine, err error)
 	GetVM(id string) (vm VirtualMachine, err error)
 }
 

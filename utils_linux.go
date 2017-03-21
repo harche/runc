@@ -3,21 +3,16 @@
 package main
 
 import (
-	"bufio"
-	"encoding/xml"
+
 	"errors"
 	"fmt"
-	"io/ioutil"
 
-	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
-	//	"runtime"
 	"strconv"
 	"strings"
 	"syscall"
-	"time"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/coreos/go-systemd/activation"
@@ -28,7 +23,6 @@ import (
 	"github.com/opencontainers/runc/libcontainer/specconv"
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/urfave/cli"
-	//	"github.com/vishvananda/netns"
 )
 
 var errEmptyID = errors.New("container id cannot be empty")
@@ -208,543 +202,10 @@ type runner struct {
 	console         string
 	container       libcontainer.Container
 	create          bool
-	qemuDirectory   string
-	args            []string
-	netInfo         netinfo
-	path            string
-	hostname        string
 }
 
-func (r *runner) CreateDeltaDiskImage(deltaDiskDirectory, diskPath string) (string, error) {
-	deltaImagePath, err := exec.LookPath("qemu-img")
-	if err != nil {
-		return "", fmt.Errorf("qemu-img is not installed on your PATH. Please, install it to run isolated qemu container")
-	}
-
-	currentDir, err := os.Getwd()
-	if err != nil {
-		return "", fmt.Errorf("Could not determine the current directory")
-	}
-
-	err = os.Chdir(deltaDiskDirectory)
-	if err != nil {
-		return "", fmt.Errorf("Could not changed to directory %s", deltaDiskDirectory)
-	}
-
-	err = exec.Command(deltaImagePath, "create", "-f", "qcow2", "-b", diskPath, "disk.img").Run()
-	if err != nil {
-		return "", fmt.Errorf("Could not execute qemu-img")
-	}
-
-	err = os.Chdir(currentDir)
-	if err != nil {
-		return "", fmt.Errorf("Could not changed to directory %s", currentDir)
-	}
-
-	return deltaDiskDirectory + "/disk.img", nil
-}
-
-func (r *runner) CreateSeedImage(seedDirectory string) (string, error) {
-	getisoimagePath, err := exec.LookPath("genisoimage")
-	if err != nil {
-		return "", fmt.Errorf("genisoimage is not installed on your PATH. Please, install it to run isolated container")
-	}
-
-	// Create user-data to be included in seed.img
-	userDataString := `#cloud-config
-runcmd:
- - mount -t 9p -o trans=virtio share_dir /mnt
- - export PATH=%s
- - hostname %s
- - chroot /mnt %s > /dev/hvc1 2>&1
- - init 0
-`
-
-	metaDataString := `#cloud-config
-network-interfaces: |
-  auto eth0
-  iface eth0 inet static
-  address %s
-  netmask %s
-  gateway %s
-`
-
-	var command string
-
-	// TODO - there is no need for > 0 check
-	if len(r.args) > 0 {
-		args := []string{}
-		for _, arg := range r.args {
-			if strings.Contains(arg, " ") {
-				args = append(args, fmt.Sprintf("'%s'", arg))
-			} else {
-				args = append(args, arg)
-			}
-		}
-		argsAsString := strings.Join(args, " ")
-		command = fmt.Sprintf("%s", argsAsString)
-
-	} /*else {
-		command = "/test"
-		//command = command = lc.container.Path
-	}*/
-	//command = "ls"
-
-	userData := []byte(fmt.Sprintf(userDataString, r.path, r.hostname, command))
-	//metaData := []byte(fmt.Sprintf(metaDataString, lc.container.NetworkSettings.Networks["bridge"].IPAddress, netMask, lc.container.NetworkSettings.Networks["bridge"].Gateway))
-	metaData := []byte(fmt.Sprintf(metaDataString, r.netInfo.IpAddr, r.netInfo.NetMask, r.netInfo.GateWay))
-
-	currentDir, err := os.Getwd()
-	if err != nil {
-		return "", fmt.Errorf("Could not determine the current directory")
-	}
-
-	err = os.Chdir(seedDirectory)
-	if err != nil {
-		return "", fmt.Errorf("Could not changed to directory %s", seedDirectory)
-	}
-
-	writeErrorUserData := ioutil.WriteFile("user-data", userData, 0700)
-	if writeErrorUserData != nil {
-		//return "", fmt.Errorf("Could not write user-data to /var/run/docker-qemu/%s", lc.container.ID)
-		return "", fmt.Errorf("Could not write user-data to /var/run/docker-qemu/%s", "DDDDD")
-	}
-
-	writeErrorMetaData := ioutil.WriteFile("meta-data", metaData, 0700)
-	if writeErrorMetaData != nil {
-		//return "", fmt.Errorf("Could not write meta-data to /var/run/docker-qemu/%s", lc.container.ID)
-		return "", fmt.Errorf("Could not write meta-data to /var/run/docker-qemu/%s", "DDDD")
-	}
-
-	logrus.Debugf("genisoimage path: %s", getisoimagePath)
-
-	err = exec.Command(getisoimagePath, "-output", "seed.img", "-volid", "cidata", "-joliet", "-rock", "user-data", "meta-data").Run()
-	if err != nil {
-		return "", fmt.Errorf("Could not execute genisoimage")
-	}
-
-	err = os.Chdir(currentDir)
-	if err != nil {
-		return "", fmt.Errorf("Could not changed to directory %s", currentDir)
-	}
-
-	return seedDirectory + "/seed.img", nil
-}
-
-type vmBaseConfig struct {
-	numCPU           int
-	DefaultMaxCpus   int
-	DefaultMaxMem    int
-	Memory           int
-	OriginalDiskPath string
-}
-
-type vmMemory struct {
-	Unit    string `xml:"unit,attr"`
-	Content int    `xml:",chardata"`
-}
-
-type maxmem struct {
-	Unit    string `xml:"unit,attr"`
-	Slots   string `xml:"slots,attr"`
-	Content int    `xml:",chardata"`
-}
-
-type vcpu struct {
-	Placement string `xml:"placement,attr"`
-	Current   string `xml:"current,attr"`
-	Content   int    `xml:",chardata"`
-}
-
-type cell struct {
-	Id     string `xml:"id,attr"`
-	Cpus   string `xml:"cpus,attr"`
-	Memory string `xml:"memory,attr"`
-	Unit   string `xml:"unit,attr"`
-}
-
-type vmCpu struct {
-	Mode string `xml:"mode,attr"`
-}
-
-type ostype struct {
-	Arch    string `xml:"arch,attr"`
-	Machine string `xml:"machine,attr"`
-	Content string `xml:",chardata"`
-}
-
-type domainos struct {
-	Supported string `xml:"supported,attr"`
-	Type      ostype `xml:"type"`
-}
-
-type feature struct {
-	Acpi acpi `xml:"acpi"`
-}
-
-type acpi struct {
-}
-
-type fspath struct {
-	Dir string `xml:"dir,attr"`
-}
-
-type filesystem struct {
-	Type       string `xml:"type,attr"`
-	Accessmode string `xml:"accessmode,attr"`
-	Source     fspath `xml:"source"`
-	Target     fspath `xml:"target"`
-}
-
-type diskdriver struct {
-	Type string `xml:"type,attr"`
-	Name string `xml:"name,attr"`
-}
-
-type disksource struct {
-	File string `xml:"file,attr"`
-}
-
-type diskformat struct {
-	Type string `xml:"type,attr"`
-}
-
-type backingstore struct {
-	Type   string     `xml:"type,attr"`
-	Index  string     `xml:"index,attr"`
-	Format diskformat `xml:"format"`
-	Source disksource `xml:"source"`
-}
-
-type disktarget struct {
-	Dev string `xml:"dev,attr"`
-	Bus string `xml:"bus,attr"`
-}
-
-type readonly struct {
-}
-
-type controller struct {
-	Type  string `xml:"type,attr"`
-	Model string `xml:"model,attr"`
-}
-
-type disk struct {
-	Type         string        `xml:"type,attr"`
-	Device       string        `xml:"device,attr"`
-	Driver       diskdriver    `xml:"driver"`
-	Source       disksource    `xml:"source"`
-	BackingStore *backingstore `xml:"backingstore,omitempty"`
-	Target       disktarget    `xml:"target"`
-	Readonly     *readonly     `xml:"readonly,omitempty"`
-}
-
-type channsrc struct {
-	Mode string `xml:"mode,attr"`
-	Path string `xml:"path,attr"`
-}
-
-type constgt struct {
-	Type string `xml:"type,attr,omitempty"`
-	Port string `xml:"port,attr"`
-}
-
-type console struct {
-	Type   string   `xml:"type,attr"`
-	Source channsrc `xml:"source"`
-	Target constgt  `xml:"target"`
-}
-
-type device struct {
-	Emulator          string       `xml:"emulator"`
-	Filesystems       []filesystem `xml:"filesystem"`
-	Disks             []disk       `xml:"disk"`
-	Consoles          []console    `xml:"console"`
-	NetworkInterfaces []nic        `xml:"interface"`
-	Controller        []controller `xml:"controller"`
-}
-
-type seclab struct {
-	Type string `xml:"type,attr"`
-}
-
-type domain struct {
-	XMLName    xml.Name  `xml:"domain"`
-	Type       string    `xml:"type,attr"`
-	Name       string    `xml:"name"`
-	Memory     vmMemory  `xml:"memory"`
-	MaxMem     *maxmem   `xml:"maxMemory,omitempty"`
-	VCpu       vcpu      `xml:"vcpu"`
-	OS         domainos  `xml:"os"`
-	Features   []feature `xml:"features"`
-	CPU        vmCpu     `xml:"cpu"`
-	OnPowerOff string    `xml:"on_poweroff"`
-	OnReboot   string    `xml:"on_reboot"`
-	OnCrash    string    `xml:"on_crash"`
-	Devices    device    `xml:"devices"`
-	SecLabel   seclab    `xml:"seclabel"`
-}
-
-type nicmac struct {
-	Address string `xml:"address,attr"`
-}
-
-type nicsrc struct {
-	Bridge string `xml:"bridge,attr"`
-}
-
-type nicmodel struct {
-	Type string `xml:"type,attr"`
-}
-
-type nic struct {
-	Type   string   `xml:"type,attr"`
-	Mac    nicmac   `xml:"mac"`
-	Source nicsrc   `xml:"source"`
-	Model  nicmodel `xml:"model"`
-}
-
-type netinfo struct {
-	IpAddr  string
-	MacAddr string
-	NetMask string
-	GateWay string
-}
-
-func (r *runner) DomainXml() (string, error) {
-	baseCfg := &vmBaseConfig{
-		numCPU:           1,
-		DefaultMaxCpus:   2,
-		DefaultMaxMem:    256,
-		Memory:           256,
-		OriginalDiskPath: "/var/lib/libvirt/images/disk.img.orig",
-	}
-
-	// Create directory for seed image and delta disk image
-	directory := r.qemuDirectory
-
-	deltaDiskImageLocation, err := r.CreateDeltaDiskImage(directory, baseCfg.OriginalDiskPath)
-	if err != nil {
-		return "", fmt.Errorf("Could not create delta disk image")
-	}
-
-	logrus.Debugf("Delta disk image location: %s", deltaDiskImageLocation)
-
-	// Domain XML Formation
-	dom := &domain{
-		Type: "kvm",
-		Name: r.container.ID(),
-	}
-
-	dom.Memory.Unit = "MiB"
-	dom.Memory.Content = baseCfg.Memory
-
-	dom.VCpu.Current = strconv.Itoa(baseCfg.numCPU)
-	dom.VCpu.Content = baseCfg.numCPU
-
-	dom.OS.Supported = "yes"
-	dom.OS.Type.Content = "hvm"
-
-	acpiFeature := feature{
-		Acpi: acpi{},
-	}
-	dom.Features = append(dom.Features, acpiFeature)
-
-	dom.SecLabel.Type = "none"
-
-	dom.CPU.Mode = "host-model"
-
-	dom.OnPowerOff = "destroy"
-	dom.OnReboot = "destroy"
-	dom.OnCrash = "destroy"
-
-	diskimage := disk{
-		Type:   "file",
-		Device: "disk",
-		Driver: diskdriver{
-			Name: "qemu",
-			Type: "qcow2",
-		},
-		Source: disksource{
-			File: deltaDiskImageLocation,
-		},
-		BackingStore: &backingstore{
-			Type:  "file",
-			Index: "1",
-			Format: diskformat{
-				Type: "raw",
-			},
-			Source: disksource{
-				File: baseCfg.OriginalDiskPath,
-			},
-		},
-		Target: disktarget{
-			Dev: "sda",
-			Bus: "scsi",
-		},
-	}
-	dom.Devices.Disks = append(dom.Devices.Disks, diskimage)
-
-	seedimage := disk{
-		Type:   "file",
-		Device: "cdrom",
-		Driver: diskdriver{
-			Name: "qemu",
-			Type: "raw",
-		},
-		Source: disksource{
-			File: fmt.Sprintf("%s/seed.img", directory),
-		},
-		Target: disktarget{
-			Dev: "sdb",
-			Bus: "scsi",
-		},
-		Readonly: &readonly{},
-	}
-	dom.Devices.Disks = append(dom.Devices.Disks, seedimage)
-
-	storageController := controller{
-		Type:  "scsi",
-		Model: "virtio-scsi",
-	}
-	dom.Devices.Controller = append(dom.Devices.Controller, storageController)
-
-	macAddress := r.netInfo.MacAddr
-	networkInterface := nic{
-		Type: "bridge",
-		Mac: nicmac{
-			Address: macAddress,
-		},
-		Source: nicsrc{
-			Bridge: "docker0",
-		},
-		Model: nicmodel{
-			Type: "virtio",
-		},
-	}
-	dom.Devices.NetworkInterfaces = append(dom.Devices.NetworkInterfaces, networkInterface)
-
-	fs := filesystem{
-		Type:       "mount",
-		Accessmode: "passthrough",
-		Source: fspath{
-			Dir: r.container.Config().Rootfs,
-		},
-		Target: fspath{
-			Dir: "share_dir",
-		},
-	}
-	dom.Devices.Filesystems = append(dom.Devices.Filesystems, fs)
-
-	serialConsole := console{
-		Type: "unix",
-		Source: channsrc{
-			Mode: "bind",
-			Path: fmt.Sprintf("%s/serial.sock", directory),
-		},
-		Target: constgt{
-			Type: "serial",
-			Port: "0",
-		},
-	}
-	dom.Devices.Consoles = append(dom.Devices.Consoles, serialConsole)
-	logrus.Debugf("Serial console socket location: %s", fmt.Sprintf("%s/serial.sock", directory))
-	vmConsole := console{
-		Type: "unix",
-		Source: channsrc{
-			Mode: "bind",
-			//Path: fmt.Sprintf("%s/arbritary.sock", lc.container.Config.QemuDirectory),
-			Path: fmt.Sprintf("%s/arbritary.sock", directory),
-		},
-		Target: constgt{
-			Type: "virtio",
-			Port: "1",
-		},
-	}
-	dom.Devices.Consoles = append(dom.Devices.Consoles, vmConsole)
-
-	appConsole := console{
-		Type: "unix",
-		Source: channsrc{
-			Mode: "bind",
-			//Path: fmt.Sprintf("%s/app.sock", lc.container.Config.QemuDirectory),
-			Path: fmt.Sprintf("%s/app.sock", directory),
-		},
-		Target: constgt{
-			Type: "virtio",
-			Port: "2",
-		},
-	}
-	dom.Devices.Consoles = append(dom.Devices.Consoles, appConsole)
-	//logrus.Debugf("Application console socket location: %s", fmt.Sprintf("%s/app.sock", lc.container.Config.QemuDirectory))
-	logrus.Debugf("Application console socket location: %s", fmt.Sprintf("%s/app.sock", directory))
-	data, err := xml.Marshal(dom)
-	if err != nil {
-		return "", err
-	}
-	return string(data), nil
-}
-
-func consoleReader(reader *bufio.Reader, output chan string) {
-	line := []byte{}
-	cr := false
-	emit := false
-	for {
-
-		oneByte, err := reader.ReadByte()
-		if err != nil {
-			close(output)
-			return
-		}
-		switch oneByte {
-		case '\n':
-			emit = !cr
-			cr = false
-		case '\r':
-			emit = true
-			cr = true
-		default:
-			cr = false
-			line = append(line, oneByte)
-		}
-		if emit {
-			output <- string(line)
-			line = []byte{}
-			emit = false
-		}
-	}
-}
 
 func (r *runner) run(config *specs.Process) (int, error) {
-	qemuDirectory := fmt.Sprintf("/var/run/docker-qemu/%s", r.container.ID())
-	err := os.MkdirAll(qemuDirectory, 0700)
-
-	if err != nil {
-		logrus.Error("Could not create directory /var/run/docker-qemu/%s : %s", r.container.ID(), err)
-	}
-
-	r.qemuDirectory = qemuDirectory
-	r.args = config.Args
-
-	for _, element := range config.Env {
-		envVar := strings.Split(element, "=")
-		envVarName := envVar[0]
-		envVarValue := envVar[1]
-
-		envVarName = strings.TrimSpace(envVarName)
-		envVarValue = strings.TrimSpace(envVarValue)
-
-		if envVarName == "PATH" {
-			r.path = envVarValue
-		}
-
-		if envVarName == "HOSTNAME" {
-			r.hostname = envVarValue
-		}
-	}
-
-	//CreateDeltaDiskImage(qemuDirectory, "/var/lib/libvirt/images/disk.img.orig")
-
 	process, err := newProcess(*config)
 
 	if err != nil {
@@ -798,6 +259,27 @@ func (r *runner) run(config *specs.Process) (int, error) {
 	}
 
 	// ISOLATED
+	hyperVisor, err := hypervisor.HypFactory()
+
+	vmParams := new(hypervisor.VirtualMachineParams)
+	vmParams.Id = r.container.ID()
+	vmParams.Args = config.Args
+	for _, element := range config.Env {
+		envVar := strings.Split(element, "=")
+		envVarName := envVar[0]
+		envVarValue := envVar[1]
+
+		envVarName = strings.TrimSpace(envVarName)
+		envVarValue = strings.TrimSpace(envVarValue)
+
+		if envVarName == "PATH" {
+			vmParams.Path = envVarValue
+			break
+		}
+	}
+
+
+
 	pid, err := r.container.State()
 
 	networkNamespacePath := pid.NamespacePaths[configs.NEWNET]
@@ -814,53 +296,23 @@ func (r *runner) run(config *specs.Process) (int, error) {
 
 	s := strings.Split(out, ",")
 
-	r.netInfo.IpAddr, r.netInfo.MacAddr, r.netInfo.NetMask, r.netInfo.GateWay = s[0], s[1], s[2], s[3]
-	fmt.Printf("COMMAND OUT MAC ADDRESS %s\n", r.netInfo.MacAddr)
+	vmParams.NetInfo.IpAddr, vmParams.NetInfo.MacAddr, vmParams.NetInfo.NetMask, vmParams.NetInfo.GateWay = s[0], s[1], s[2], s[3]
 
-	fmt.Printf("SPLIT OUT R NETINFO %s %s %s %s\n", r.netInfo.IpAddr, r.netInfo.MacAddr, r.netInfo.NetMask, r.netInfo.GateWay)
-	r.CreateSeedImage(qemuDirectory)
+	fmt.Printf("COMMAND OUT MAC ADDRESS %s\n",vmParams.NetInfo.IpAddr)
 
-	domainXml, err := r.DomainXml()
+	fmt.Printf("SPLIT OUT R NETINFO %s %s %s %s\n", vmParams.NetInfo.IpAddr, vmParams.NetInfo.MacAddr, vmParams.NetInfo.NetMask, vmParams.NetInfo.GateWay)
+
+	vmParams.Rootfs = r.container.Config().Rootfs
+
+	//_, err  = hyperVisor.CreateVM(domainXml)
+	_, err  = hyperVisor.CreateVM(*vmParams)
 	if err != nil {
-		logrus.Error("Fail to get domain xml configuration:", err)
-
-	}
-	hyperVisor, err := hypervisor.HypFactory()
-	_, err  = hyperVisor.CreateVM(domainXml)
-	if err != nil {
-		fmt.Errorf("failed")
+		fmt.Errorf("FAILED 333333")
 	}
 
 
-	appConsoleSockName := qemuDirectory + "/app.sock"
 
-	var consoleConn net.Conn
-	consoleConn, err = net.DialTimeout("unix", appConsoleSockName, time.Duration(10)*time.Second)
-
-	if err != nil {
-		logrus.Debugf("failed to connect  ", err.Error())
-		//fmt.Fprint("failed to connect to ", appConsoleSockName, " ", err.Error(), "\n")
-
-	}
-
-	reader := bufio.NewReaderSize(consoleConn, 256)
-
-	cout := make(chan string, 128)
-	go consoleReader(reader, cout)
-
-	for {
-		line, ok := <-cout
-		if ok {
-			//fmt.Fprintln(stdout, line)
-			fmt.Println(line)
-		} else {
-			break
-		}
-	}
-
-	fmt.Println("HEEEEEEEE	")
 	if r.detach || r.create {
-		fmt.Println("HEEEEEEEE 22222")
 		return 0, nil
 	}
 	status, err := handler.forward(process)
