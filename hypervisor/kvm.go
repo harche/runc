@@ -199,6 +199,23 @@ type KVMVirtualMachine struct {
 	domain *libvirt.Domain
 }
 
+func (k *KVMVirtualMachine) Suspend() error {
+	err := k.domain.Suspend()
+	if err != nil {
+		fmt.Println("Fail to start qemu isolated container ", err)
+		return err
+	}
+	return nil
+}
+
+func (k *KVMVirtualMachine) Resume() error {
+	err := k.domain.Resume()
+	if err != nil {
+		fmt.Println("Fail to start qemu isolated container ", err)
+		return err
+	}
+	return nil
+}
 
 func (k *KVMVirtualMachine) ID() string {
 	return k.id

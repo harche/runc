@@ -3,6 +3,8 @@ package hypervisor
 type VirtualMachine interface {
 	ID() string
 	Start() error
+	Suspend() error
+	Resume() error
 	Stop() error
 	Shutdown() error
 	Kill() error

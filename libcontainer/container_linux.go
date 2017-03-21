@@ -19,12 +19,12 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/golang/protobuf/proto"
-	libvirt "github.com/libvirt/libvirt-go"
 	"github.com/opencontainers/runc/libcontainer/cgroups"
 	"github.com/opencontainers/runc/libcontainer/configs"
 	"github.com/opencontainers/runc/libcontainer/criurpc"
 	"github.com/opencontainers/runc/libcontainer/system"
 	"github.com/opencontainers/runc/libcontainer/utils"
+	"github.com/opencontainers/runc/hypervisor"
 	"github.com/syndtr/gocapability/capability"
 	"github.com/vishvananda/netlink/nl"
 )
@@ -447,27 +447,10 @@ func (c *linuxContainer) Pause() error {
 		}
 
 		//ISOLATED
-		conn, err := libvirt.NewConnect("qemu:///system")
-		if err != nil {
-			fmt.Errorf("Failed")
-		}
-		defer conn.Close()
-
-		domain, err := conn.LookupDomainByName(c.ID())
-		if err != nil {
-			logrus.Error("Failed to launch domain ", err)
-
-		}
-
-		if domain == nil {
-			logrus.Error("Failed to launch domain as no domain in LibvirtContext")
-
-		}
-
-		err = domain.Suspend()
-		if err != nil {
-			logrus.Error("Fail to suspend qemu isolated container ", err)
-
+		hyperVisor, err := hypervisor.HypFactory()
+		virtualMachine, err := hyperVisor.GetVM(c.ID())
+		if err == nil {
+			virtualMachine.Suspend()
 		}
 
 		return c.state.transition(&pausedState{
@@ -492,27 +475,10 @@ func (c *linuxContainer) Resume() error {
 	}
 
 	//ISOLATED
-	conn, err := libvirt.NewConnect("qemu:///system")
-	if err != nil {
-		fmt.Errorf("Failed")
-	}
-	defer conn.Close()
-
-	domain, err := conn.LookupDomainByName(c.ID())
-	if err != nil {
-		logrus.Error("Failed to launch domain ", err)
-
-	}
-
-	if domain == nil {
-		logrus.Error("Failed to launch domain as no domain in LibvirtContext")
-
-	}
-
-	err = domain.Resume()
-	if err != nil {
-		logrus.Error("Fail to resume qemu isolated container ", err)
-
+	hyperVisor, err := hypervisor.HypFactory()
+	virtualMachine, err := hyperVisor.GetVM(c.ID())
+	if err == nil {
+		virtualMachine.Resume()
 	}
 
 	return c.state.transition(&runningState{
