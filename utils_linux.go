@@ -10,7 +10,6 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
-	"strings"
 	"syscall"
 
 	"github.com/Sirupsen/logrus"
@@ -263,36 +262,43 @@ func (r *runner) run(config *specs.Process) (int, error) {
 	vmParams := new(hypervisor.VirtualMachineParams)
 	vmParams.Id = r.container.ID()
 	vmParams.Args = config.Args
-	for _, element := range config.Env {
-		envVar := strings.Split(element, "=")
-		envVarName := envVar[0]
-		envVarValue := envVar[1]
-
-		envVarName = strings.TrimSpace(envVarName)
-		envVarValue = strings.TrimSpace(envVarValue)
-
-		if envVarName == "PATH" {
-			vmParams.Path = envVarValue
-			break
-		}
-	}
+	vmParams.EnvPath(config.Env)
+	fmt.Println(vmParams.Path)
+	//for _, element := range config.Env {
+	//	envVar := strings.Split(element, "=")
+	//	envVarName := envVar[0]
+	//	envVarValue := envVar[1]
+	//
+	//	envVarName = strings.TrimSpace(envVarName)
+	//	envVarValue = strings.TrimSpace(envVarValue)
+	//
+	//	if envVarName == "PATH" {
+	//		vmParams.Path = envVarValue
+	//		break
+	//	}
+	//}
 
 
 
 	containerState, err := r.container.State()
+	if err != nil {
+		r.destroy()
+		return -1, err
+	}
+
 	vmParams.NetworkNSPath = containerState.NamespacePaths[configs.NEWNET]
 	err = vmParams.NetworkInfo()
-
-	fmt.Printf("COMMAND OUT MAC ADDRESS %s\n", vmParams.NetInfo.IpAddr)
-
-	fmt.Printf("SPLIT OUT R NETINFO %s %s %s %s\n", vmParams.NetInfo.IpAddr, vmParams.NetInfo.MacAddr, vmParams.NetInfo.NetMask, vmParams.NetInfo.GateWay)
+	if err != nil {
+		r.destroy()
+		return -1, err
+	}
 
 	vmParams.Rootfs = r.container.Config().Rootfs
 
-	//_, err  = hyperVisor.CreateVM(domainXml)
 	_, err = hyperVisor.CreateVM(*vmParams)
 	if err != nil {
-		fmt.Errorf("FAILED 333333")
+		r.destroy()
+		return -1, err
 	}
 
 	if r.detach || r.create {

@@ -20,6 +20,22 @@ func SeedDiskImgPath(diskPath string) string{
 	return diskPath + "/seed.img"
 }
 
+func (k *VirtualMachineParams) EnvPath(envVars []string) {
+	for _, element := range envVars {
+		envVar := strings.Split(element, "=")
+		envVarName := envVar[0]
+		envVarValue := envVar[1]
+
+		envVarName = strings.TrimSpace(envVarName)
+		envVarValue = strings.TrimSpace(envVarValue)
+
+		if envVarName == "PATH" {
+			k.Path = envVarValue
+			break
+		}
+	}
+
+}
 func (k *VirtualMachineParams) CreateDeltaDiskImage() (string, error) {
 	deltaImagePath, err := exec.LookPath("qemu-img")
 	if err != nil {
