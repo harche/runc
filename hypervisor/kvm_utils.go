@@ -9,6 +9,7 @@ import (
 	"bufio"
 	"strconv"
 	"encoding/xml"
+	"path/filepath"
 )
 
 func DeltaDiskImgPath(diskPath string) string{
@@ -126,6 +127,21 @@ network-interfaces: |
 	return SeedDiskImgPath(k.DiskDir), nil
 }
 
+func (k *VirtualMachineParams) NetworkInfo() error {
+	dir, err := filepath.Abs(filepath.Dir(os.Args[0]))
+	cmdName := dir + "/netinfo.sh"
+	cmdArgs := []string{k.NetworkNSPath}
+	cmdOut, err := exec.Command(cmdName, cmdArgs...).Output()
+	if err != nil {
+		fmt.Println(os.Stderr, "There was an error running the command: ", err)
+
+	}
+
+	out := string(cmdOut)
+	s := strings.Split(out, ",")
+	k.NetInfo.IpAddr, k.NetInfo.MacAddr, k.NetInfo.NetMask, k.NetInfo.GateWay = s[0], s[1], s[2], s[3]
+	return err
+}
 
 func (k *VirtualMachineParams) DomainXml() (string, error) {
 	// TODO - read them from config.json
@@ -324,4 +340,19 @@ func createQemuDir(id string, err error) (string, error) {
 	qemuDirectoryPath := fmt.Sprintf("/var/run/docker-qemu/%s", id)
 	err = os.MkdirAll(qemuDirectoryPath, 0700)
 	return qemuDirectoryPath, err
+}
+
+
+func NetworkInfo(err error, networkNamespacePath string) (error, []string) {
+	dir, err := filepath.Abs(filepath.Dir(os.Args[0]))
+	cmdName := dir + "/netinfo.sh"
+	cmdArgs := []string{networkNamespacePath}
+	cmdOut, err := exec.Command(cmdName, cmdArgs...).Output()
+	if err != nil {
+		fmt.Println(os.Stderr, "There was an error running the command: ", err)
+
+	}
+	out := string(cmdOut)
+	s := strings.Split(out, ",")
+	return err, s
 }

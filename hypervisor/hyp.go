@@ -23,6 +23,7 @@ type VirtualMachineParams struct {
 	Path    string
 	Rootfs  string
 	DiskDir string
+	NetworkNSPath string
 }
 
 

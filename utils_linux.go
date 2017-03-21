@@ -8,7 +8,6 @@ import (
 	"fmt"
 
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -280,37 +279,21 @@ func (r *runner) run(config *specs.Process) (int, error) {
 
 
 
-	pid, err := r.container.State()
+	containerState, err := r.container.State()
+	vmParams.NetworkNSPath = containerState.NamespacePaths[configs.NEWNET]
+	err = vmParams.NetworkInfo()
 
-	networkNamespacePath := pid.NamespacePaths[configs.NEWNET]
-	dir, err := filepath.Abs(filepath.Dir(os.Args[0]))
-
-	cmdName := dir + "/netinfo.sh"
-	cmdArgs := []string{networkNamespacePath}
-	cmdOut, err := exec.Command(cmdName, cmdArgs...).Output()
-	if err != nil {
-		fmt.Println(os.Stderr, "There was an error running the command: ", err)
-
-	}
-	out := string(cmdOut)
-
-	s := strings.Split(out, ",")
-
-	vmParams.NetInfo.IpAddr, vmParams.NetInfo.MacAddr, vmParams.NetInfo.NetMask, vmParams.NetInfo.GateWay = s[0], s[1], s[2], s[3]
-
-	fmt.Printf("COMMAND OUT MAC ADDRESS %s\n",vmParams.NetInfo.IpAddr)
+	fmt.Printf("COMMAND OUT MAC ADDRESS %s\n", vmParams.NetInfo.IpAddr)
 
 	fmt.Printf("SPLIT OUT R NETINFO %s %s %s %s\n", vmParams.NetInfo.IpAddr, vmParams.NetInfo.MacAddr, vmParams.NetInfo.NetMask, vmParams.NetInfo.GateWay)
 
 	vmParams.Rootfs = r.container.Config().Rootfs
 
 	//_, err  = hyperVisor.CreateVM(domainXml)
-	_, err  = hyperVisor.CreateVM(*vmParams)
+	_, err = hyperVisor.CreateVM(*vmParams)
 	if err != nil {
 		fmt.Errorf("FAILED 333333")
 	}
-
-
 
 	if r.detach || r.create {
 		return 0, nil
@@ -323,6 +306,7 @@ func (r *runner) run(config *specs.Process) (int, error) {
 	r.destroy()
 	return status, err
 }
+
 
 func (r *runner) destroy() {
 	if r.shouldDestroy {
