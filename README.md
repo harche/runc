@@ -48,6 +48,13 @@ yum install genisoimage
 yum install qemu-kvm qemu-img
 ```
 
+Download virtual machine image from,
+```
+wget https://dl.fedoraproject.org/pub/archive/fedora/linux/releases/22/Cloud/x86_64/Images/Fedora-Cloud-Base-22-20150521.x86_64.qcow2
+```
+Save this in `/var/lib/libvirt/images/disk.img.orig`
+
+
 ### Using runvm with docker
 
 Assuming that you have already built the `runvm` from **Building** section above, you will have to let docker 
