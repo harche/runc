@@ -61,7 +61,7 @@ Locate the `dockerd` path on your system using,
 `which dockerd`
 
 Assuming it's `/usr/bin/dockerd` execute following command to let docker daemon know about `runvm`,
-`/usr/bin/dockerd --add-runtime custom=$GOPATH/src/github.com/harche/runvm/runvm
+`/usr/bin/dockerd --add-runtime custom=$GOPATH/src/github.com/harche/runvm/runvm`
 
 
 ### Creating an OCI Bundle
