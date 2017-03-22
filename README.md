@@ -61,7 +61,7 @@ service docker stop
 
 Execute the following command to let docker daemon know about `runvm`,
 ```
-dockerd --add-runtime runvm=$GOPATH/src/github.com/harche/runvm/runvm
+dockerd --add-runtime runvm=/usr/local/sbin/runvm
 ```
 
 Let's launch some virtual machines using docker images!
