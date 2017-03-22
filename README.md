@@ -71,7 +71,17 @@ $ docker  run  --runtime=runvm busybox hostname
 f2c647640c751414d9db7a4dffdfcf410976df2c43b7b25fed22ba41f2dd0b24
 $ 
 ```
-In above example, the command `hostname` was executed inside of a virtual machine. 
+In above example, the command `hostname` was executed inside of a virtual machine.
+
+```
+# virsh list --all 
+ Id    Name                           State
+----------------------------------------------------
+ 116   f2c647640c751414d9db7a4dffdfcf410976df2c43b7b25fed22ba41f2dd0b24 running
+# 
+```
+Once the given command has completed it's execution the virtual machine is cleared 
+from the system.
 
 Note that in case you need to launch regular `cgroups` based containers all you have 
 to do is to let docker use the built-in runtime `runc` that it ships with,
