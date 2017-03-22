@@ -55,6 +55,12 @@ apt-get install genisoimage
 apt-get install qeum-kvm
 ```
 
+Fedora
+```
+yum install genisoimage
+yum install qemu-kvm qemu-img
+```
+
 ### Creating an OCI Bundle
 
 In order to use runvm you must have your container in the format of an OCI bundle.
