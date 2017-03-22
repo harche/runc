@@ -1,6 +1,8 @@
 ## runvm
 
-`runvm` (pronounced as `run vm`) is a CLI tool for spawning and running containers according to the OCI specification.
+`runvm` (pronounced as `run vm`) is a CLI tool for spawning and running virtual machines using docker images. runvm 
+allows you to use vastly available docker images and execute the code inside a secure virtual machine using 
+standard OCI compliant docker runtime. 
 
 ## Building
 
