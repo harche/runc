@@ -1,6 +1,6 @@
-## runcvm
+## runvm
 
-`runcvm` (pronounced as `run vm`) is a CLI tool for spawning and running containers according to the OCI specification.
+`runvm` (pronounced as `run vm`) is a CLI tool for spawning and running containers according to the OCI specification.
 
 ## Building
 
