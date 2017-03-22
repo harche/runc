@@ -14,7 +14,7 @@ It must be built with Go version 1.6 or higher in order for some features to fun
 In order to enable seccomp support you will need to install `libseccomp` on your platform.
 > e.g. `libseccomp-devel` for CentOS, or `libseccomp-dev` for Ubuntu
 
-Otherwise, if you do not want to build `runc` with seccomp support you can add `BUILDTAGS=""` when running make.
+Otherwise, if you do not want to build `runvm` with seccomp support you can add `BUILDTAGS=""` when running make.
 
 ```bash
 # create a 'github.com/harche' in your GOPATH/src
