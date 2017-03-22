@@ -50,7 +50,9 @@ yum install qemu-kvm qemu-img
 
 Download virtual machine image from,
 ```
-wget https://dl.fedoraproject.org/pub/archive/fedora/linux/releases/22/Cloud/x86_64/Images/Fedora-Cloud-Base-22-20150521.x86_64.qcow2
+$ sudo cd /var/lib/libvirt/images   
+$ sudo wget https://dl.fedoraproject.org/pub/archive/fedora/linux/releases/22/Cloud/x86_64/Images/Fedora-Cloud-Base-22-20150521.x86_64.qcow2
+$ sudo mv Fedora-Cloud-Base-22-20150521.x86_64.qcow2 disk.img.orig
 ```
 Save this in `/var/lib/libvirt/images/disk.img.orig`
 
@@ -81,11 +83,11 @@ $
 In above example, the command `hostname` was executed inside of a virtual machine.
 
 ```
-# virsh list --all 
+$ sudo virsh list --all 
  Id    Name                           State
 ----------------------------------------------------
  116   f2c647640c751414d9db7a4dffdfcf410976df2c43b7b25fed22ba41f2dd0b24 running
-# 
+$ 
 ```
 Once the given command has completed it's execution the virtual machine is cleared 
 from the system.
