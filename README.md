@@ -1,20 +1,12 @@
-[![Build Status](https://jenkins.dockerproject.org/buildStatus/icon?job=runc Master)](https://jenkins.dockerproject.org/job/runc Master)
+## runcvm
 
-## runc
-
-`runc` is a CLI tool for spawning and running containers according to the OCI specification.
-
-## Releases
-
-`runc` depends on and tracks the [runtime-spec](https://github.com/opencontainers/runtime-spec) repository.
-We will try to make sure that `runc` and the OCI specification major versions stay in lockstep.
-This means that `runc` 1.0.0 should implement the 1.0 version of the specification.
-
-You can find official releases of `runc` on the [release](https://github.com/opencontainers/runc/releases) page.
+`runcvm` (pronounced as `run vm`) is a CLI tool for spawning and running containers according to the OCI specification.
 
 ## Building
 
-`runc` currently supports the Linux platform with various architecture support. 
+`runvm` currently supports the Linux platform with various architecture support. For the purpose 
+of proof of concept, it only supports launching virtual machines using KVM. But we plan support `plug and play` any hypervisor in the future.
+
 It must be built with Go version 1.6 or higher in order for some features to function properly.
 
 In order to enable seccomp support you will need to install `libseccomp` on your platform.
@@ -23,10 +15,10 @@ In order to enable seccomp support you will need to install `libseccomp` on your
 Otherwise, if you do not want to build `runc` with seccomp support you can add `BUILDTAGS=""` when running make.
 
 ```bash
-# create a 'github.com/opencontainers' in your GOPATH/src
-cd github.com/opencontainers
-git clone https://github.com/opencontainers/runc
-cd runc
+# create a 'github.com/harche' in your GOPATH/src
+cd github.com/harche
+git clone https://github.com/harche/runvm
+cd runvm
 
 make
 sudo make install
