@@ -26,12 +26,12 @@ make
 sudo make install
 ```
 
-`runc` will be installed to `/usr/local/sbin/runc` on your system.
+`runvm` will be installed to `/usr/local/sbin/runvm` on your system.
 
 
 ### Running the test suite
 
-`runc` currently supports running its test suite via Docker.
+`runvm` currently supports running its test suite via Docker.
 To run the suite just type `make test`.
 
 ```bash
@@ -46,11 +46,11 @@ You can run a specific test case by setting the `TESTFLAGS` variable.
 # make test TESTFLAGS="-run=SomeTestFunction"
 ```
 
-## Using runc
+## Using runvm
 
 ### Creating an OCI Bundle
 
-In order to use runc you must have your container in the format of an OCI bundle.
+In order to use runvm you must have your container in the format of an OCI bundle.
 If you have Docker installed you can use its `export` method to acquire a root filesystem from an existing Docker container.
 
 ```bash
@@ -66,11 +66,11 @@ docker export $(docker create busybox) | tar -C rootfs -xvf -
 ```
 
 After a root filesystem is populated you just generate a spec in the format of a `config.json` file inside your bundle.
-`runc` provides a `spec` command to generate a base template spec that you are then able to edit.
+`runvm` provides a `spec` command to generate a base template spec that you are then able to edit.
 To find features and documentation for fields in the spec please refer to the [specs](https://github.com/opencontainers/runtime-spec) repository.
 
 ```bash
-runc spec
+runvm spec
 ```
 
 ### Running Containers
@@ -82,10 +82,10 @@ The first way is to use the convenience command `run` that will handle creating,
 ```bash
 cd /mycontainer
 
-runc run mycontainerid
+runvm run mycontainerid
 ```
 
-If you used the unmodified `runc spec` template this should give you a `sh` session inside the container.
+If you used the unmodified `runvm spec` template this should give you a `sh` session inside the container.
 
 The second way to start a container is using the specs lifecycle operations.
 This gives you more power over how the container is created and managed while it is running.
@@ -130,27 +130,27 @@ Now we can go though the lifecycle operations in your shell.
 ```bash
 cd /mycontainer
 
-runc create mycontainerid
+runvm create mycontainerid
 
 # view the container is created and in the "created" state
-runc list
+runvm list
 
 # start the process inside the container
-runc start mycontainerid
+runvm start mycontainerid
 
 # after 5 seconds view that the container has exited and is now in the stopped state
-runc list
+runvm list
 
 # now delete the container
-runc delete mycontainerid
+runvm delete mycontainerid
 ```
 
-This adds more complexity but allows higher level systems to manage runc and provides points in the containers creation to setup various settings after the container has created and/or before it is deleted.
+This adds more complexity but allows higher level systems to manage runvm and provides points in the containers creation to setup various settings after the container has created and/or before it is deleted.
 This is commonly used to setup the container's network stack after `create` but before `start` where the user's defined process will be running.
 
 #### Supervisors
 
-`runc` can be used with process supervisors and init systems to ensure that containers are restarted when they exit.
+`runvm` can be used with process supervisors and init systems to ensure that containers are restarted when they exit.
 An example systemd unit file looks something like this.
 
 ```systemd
@@ -159,8 +159,8 @@ Description=Start My Container
 
 [Service]
 Type=forking
-ExecStart=/usr/local/sbin/runc run -d --pid-file /run/mycontainerid.pid mycontainerid
-ExecStopPost=/usr/local/sbin/runc delete mycontainerid
+ExecStart=/usr/local/sbin/runvm run -d --pid-file /run/mycontainerid.pid mycontainerid
+ExecStopPost=/usr/local/sbin/runvm delete mycontainerid
 WorkingDirectory=/mycontainer
 PIDFile=/run/mycontainerid.pid
 
