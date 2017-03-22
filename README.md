@@ -78,7 +78,7 @@ to do is to let docker use the built-in runtime `runc` that it ships with,
 
 ```
 $ docker run busybox hostname
-f2c647640c751414d9db7a4dffdfcf410976df2c43b7b25fed22ba41f2dd0b24
+800f4cc7a69eec659b74a96c9f03165d97374b13658dfc23b885cabd3208e628
 $ 
 ```
 
