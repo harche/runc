@@ -48,7 +48,7 @@ yum install genisoimage
 yum install qemu-kvm qemu-img
 ```
 
-### Using custom OCI runtime with docker
+### Using runvm with docker
 
 Assuming that you have already built the `runvm` from 'Building' section above, you will have to let docker 
 use this new runtime so that when docker trying to provision new container `runvm` can lanuch a virtual 
