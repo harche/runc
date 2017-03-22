@@ -55,13 +55,19 @@ use this new runtime so that when docker is trying to provision new container `r
 machine instead with the given docker image.
 
 Stop the docker deamon if it's already running,
-`service docker stop`
+```
+service docker stop
+```
 
 Execute the following command to let docker daemon know about `runvm`,
-`dockerd --add-runtime runvm=$GOPATH/src/github.com/harche/runvm/runvm`
+```
+dockerd --add-runtime runvm=$GOPATH/src/github.com/harche/runvm/runvm
+```
 
 Let's launch some virtual machines using docker images!
-`docker run  --runtime=runvm busybox hostname`
+```
+docker run  --runtime=runvm busybox hostname
+```
 
 ```
 $ docker  run  --runtime=runvm busybox hostname
@@ -73,7 +79,9 @@ In above example, the command `hostname` was executed inside of a virtual machin
 Note that in case you need to launch regular `cgroups` based containers all you have 
 to do is to let docker use the built-in runtime `runc` that it ships with,
 
-`docker run  busybox hostname`
+```
+docker run  busybox hostname
+```
 
 ```
 $ docker run busybox hostname
