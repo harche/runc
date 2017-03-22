@@ -28,22 +28,6 @@ sudo make install
 
 `runc` will be installed to `/usr/local/sbin/runc` on your system.
 
-#### Build Tags
-
-`runc` supports optional build tags for compiling support of various features.
-To add build tags to the make option the `BUILDTAGS` variable must be set.
-
-```bash
-make BUILDTAGS='seccomp apparmor'
-```
-
-| Build Tag | Feature                            | Dependency  |
-|-----------|------------------------------------|-------------|
-| seccomp   | Syscall filtering                  | libseccomp  |
-| selinux   | selinux process and mount labeling | <none>      |
-| apparmor  | apparmor profile support           | libapparmor |
-| ambient   | ambient capability support         | kernel 4.3  |
-
 
 ### Running the test suite
 
