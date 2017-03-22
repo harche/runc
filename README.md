@@ -98,7 +98,8 @@ $ docker run busybox hostname
 800f4cc7a69eec659b74a96c9f03165d97374b13658dfc23b885cabd3208e628
 $ 
 ```
-
+Docker deamon restart is *NOT* required for launching containers simultaenously using
+`runc` and `runvm`
 
 
 ### Creating an OCI Bundle
