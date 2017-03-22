@@ -47,6 +47,13 @@ You can run a specific test case by setting the `TESTFLAGS` variable.
 ```
 
 ## Using runvm
+### Prerequisites
+
+Ubuntu
+```
+apt-get install genisoimage
+apt-get install qeum-kvm
+```
 
 ### Creating an OCI Bundle
 
