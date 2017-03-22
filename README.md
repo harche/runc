@@ -64,7 +64,7 @@ Execute the following command to let docker daemon know about `runvm`,
 dockerd --add-runtime runvm=/usr/local/sbin/runvm
 ```
 
-Let's launch some virtual machines using docker images!
+Open another shell to launch some virtual machines using docker images!
 
 ```
 $ docker  run  --runtime=runvm busybox hostname
