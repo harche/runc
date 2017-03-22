@@ -31,6 +31,9 @@ sudo make install
 
 
 ## Using runvm
+
+This release supports launching virtual machines using KVM.
+
 ### Prerequisites
 
 Ubuntu
@@ -44,6 +47,22 @@ Fedora
 yum install genisoimage
 yum install qemu-kvm qemu-img
 ```
+
+### Using custom OCI runtime with docker
+
+Assuming that you have already built the `runvm` from 'Building' section above, you will have to let docker 
+use this new runtime so that when docker trying to provision new container `runvm` can lanuch a virtual 
+machine instead with the given docker image.
+
+Stop the docker deamon if it's already running,
+`service docker restart`
+
+Locate the `dockerd` path on your system using, 
+`which dockerd`
+
+Assuming it's `/usr/bin/dockerd` execute following command to let docker daemon know about `runvm`,
+`/usr/bin/dockerd --add-runtime custom=$GOPATH/src/github.com/harche/runvm/runvm
+
 
 ### Creating an OCI Bundle
 
