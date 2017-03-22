@@ -29,22 +29,6 @@ sudo make install
 `runvm` will be installed to `/usr/local/sbin/runvm` on your system.
 
 
-### Running the test suite
-
-`runvm` currently supports running its test suite via Docker.
-To run the suite just type `make test`.
-
-```bash
-make test
-```
-
-There are additional make targets for running the tests outside of a container but this is not recommended as the tests are written with the expectation that they can write and remove anywhere.
-
-You can run a specific test case by setting the `TESTFLAGS` variable.
-
-```bash
-# make test TESTFLAGS="-run=SomeTestFunction"
-```
 
 ## Using runvm
 ### Prerequisites
@@ -179,4 +163,20 @@ PIDFile=/run/mycontainerid.pid
 
 [Install]
 WantedBy=multi-user.target
+```
+### Running the test suite
+
+`runvm` currently supports running its test suite via Docker.
+To run the suite just type `make test`.
+
+```bash
+make test
+```
+
+There are additional make targets for running the tests outside of a container but this is not recommended as the tests are written with the expectation that they can write and remove anywhere.
+
+You can run a specific test case by setting the `TESTFLAGS` variable.
+
+```bash
+# make test TESTFLAGS="-run=SomeTestFunction"
 ```
