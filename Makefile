@@ -27,10 +27,10 @@ VERSION := ${shell cat ./VERSION}
 SHELL := $(shell command -v bash 2>/dev/null)
 
 all: $(RUNC_LINK)
-	go build -i -ldflags "-X main.gitCommit=${COMMIT} -X main.version=${VERSION}" -tags "$(BUILDTAGS)" -o runc .
+	go build -i -ldflags "-X main.gitCommit=${COMMIT} -X main.version=${VERSION}" -tags "$(BUILDTAGS)" -o runvm .
 
 static: $(RUNC_LINK)
-	CGO_ENABLED=1 go build -i -tags "$(BUILDTAGS) cgo static_build" -ldflags "-w -extldflags -static -X main.gitCommit=${COMMIT} -X main.version=${VERSION}" -o runc .
+	CGO_ENABLED=1 go build -i -tags "$(BUILDTAGS) cgo static_build" -ldflags "-w -extldflags -static -X main.gitCommit=${COMMIT} -X main.version=${VERSION}" -o runvm .
 
 release: $(RUNC_LINK)
 	@flag_list=(seccomp selinux apparmor static ambient); \
@@ -93,7 +93,7 @@ localintegration: all
 	bats -t tests/integration${TESTFLAGS}
 
 install:
-	install -D -m0755 runc $(BINDIR)/runc
+	install -D -m0755 runvm $(BINDIR)/runvm
 
 install-bash:
 	install -D -m0644 contrib/completions/bash/runc $(PREFIX)/share/bash-completion/completions/runc
@@ -103,7 +103,7 @@ install-man:
 	install -m 644 $(MAN_PAGES) $(MAN_INSTALL_PATH)
 
 uninstall:
-	rm -f $(BINDIR)/runc
+	rm -f $(BINDIR)/runvm
 
 uninstall-bash:
 	rm -f $(PREFIX)/share/bash-completion/completions/runc
@@ -112,7 +112,7 @@ uninstall-man:
 	rm -f $(addprefix $(MAN_INSTALL_PATH),$(MAN_PAGES_BASE))
 
 clean:
-	rm -f runc
+	rm -f runvm
 	rm -f $(RUNC_LINK)
 	rm -rf $(GOPATH)/pkg
 	rm -rf $(RELEASE_DIR)
