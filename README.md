@@ -86,7 +86,7 @@ To find features and documentation for fields in the spec please refer to the [s
 runvm spec
 ```
 
-### Running Containers
+### Running Virtual Machines
 
 Assuming you have an OCI bundle from the previous step you can execute the container in two different ways.
 
