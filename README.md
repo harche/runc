@@ -7,7 +7,7 @@ standard OCI compliant docker runtime.
 ## Building
 
 `runvm` currently supports the Linux platform with various architecture support. For the purpose 
-of proof of concept, it only supports launching virtual machines using KVM. But we plan support `plug and play` any hypervisor in the future.
+of proof of concept, it only supports launching virtual machines using KVM for now.
 
 It must be built with Go version 1.6 or higher in order for some features to function properly.
 
@@ -204,25 +204,6 @@ runvm delete mycontainerid
 This adds more complexity but allows higher level systems to manage runvm and provides points in the containers creation to setup various settings after the container has created and/or before it is deleted.
 This is commonly used to setup the container's network stack after `create` but before `start` where the user's defined process will be running.
 
-#### Supervisors
-
-`runvm` can be used with process supervisors and init systems to ensure that containers are restarted when they exit.
-An example systemd unit file looks something like this.
-
-```systemd
-[Unit]
-Description=Start My Container
-
-[Service]
-Type=forking
-ExecStart=/usr/local/sbin/runvm run -d --pid-file /run/mycontainerid.pid mycontainerid
-ExecStopPost=/usr/local/sbin/runvm delete mycontainerid
-WorkingDirectory=/mycontainer
-PIDFile=/run/mycontainerid.pid
-
-[Install]
-WantedBy=multi-user.target
-```
 ### Running the test suite
 
 `runvm` currently supports running its test suite via Docker.

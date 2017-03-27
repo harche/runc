@@ -356,12 +356,12 @@ func (k *KVMHypervisor) GetVM(id string) (vm VirtualMachine, err error) {
 	kvmVirtualMachine := new(KVMVirtualMachine)
 	domain, err := k.conn.LookupDomainByName(id)
 	if err != nil {
-		fmt.Println("Failed to launch domain ", err)
-
+		fmt.Println("Failed to retrieve domain ", err)
+		return nil, err
 	}
 
 	if domain == nil {
-		fmt.Println("Failed to launch domain as no domain in LibvirtContext")
+		fmt.Println("Failed to retrieve valid domain object ", err)
 		return nil, err
 
 	}
