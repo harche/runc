@@ -40,12 +40,19 @@ Ubuntu
 ```
 apt-get install genisoimage
 apt-get install qeum-kvm
+apt-get install libvirt-bin
+apt-get install qemu-system 
+apt-get install qemu-system-<arch>
+apt-get install qemu-utils
 ```
 
 Fedora
 ```
 yum install genisoimage
-yum install qemu-kvm qemu-img
+yum install qemu-kvm
+yum install qemu-img
+yum install qemu-kvm-tools
+yum install libvirt-devel
 ```
 
 Download virtual machine image from,
@@ -141,8 +148,7 @@ cd /mycontainer
 runvm run mycontainerid
 ```
 
-If you used the unmodified `runvm spec` template this should give you a `sh` session inside the container.
-
+This release does not support getting a shell inside running VM.
 
 ```bash
 cd /mycontainer
