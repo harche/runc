@@ -256,6 +256,12 @@ func (r *runner) run(config *specs.Process) (int, error) {
 		}
 	}
 
+	containerState, err := r.container.State()
+	if err != nil {
+		r.destroy()
+		return -1, err
+	}
+
 	// ISOLATED
 	hyperVisor, err := hypervisor.HypFactory()
 
@@ -263,28 +269,6 @@ func (r *runner) run(config *specs.Process) (int, error) {
 	vmParams.Id = r.container.ID()
 	vmParams.Args = config.Args
 	vmParams.EnvPath(config.Env)
-	fmt.Println(vmParams.Path)
-	//for _, element := range config.Env {
-	//	envVar := strings.Split(element, "=")
-	//	envVarName := envVar[0]
-	//	envVarValue := envVar[1]
-	//
-	//	envVarName = strings.TrimSpace(envVarName)
-	//	envVarValue = strings.TrimSpace(envVarValue)
-	//
-	//	if envVarName == "PATH" {
-	//		vmParams.Path = envVarValue
-	//		break
-	//	}
-	//}
-
-
-
-	containerState, err := r.container.State()
-	if err != nil {
-		r.destroy()
-		return -1, err
-	}
 
 	vmParams.NetworkNSPath = containerState.NamespacePaths[configs.NEWNET]
 	err = vmParams.NetworkInfo()

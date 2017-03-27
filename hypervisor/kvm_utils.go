@@ -152,7 +152,6 @@ func (k *VirtualMachineParams) NetworkInfo() error {
 		fmt.Println(os.Stderr, "There was an error running the command: ", err)
 
 	}
-
 	out := string(cmdOut)
 	s := strings.Split(out, ",")
 	k.NetInfo.IpAddr, k.NetInfo.MacAddr, k.NetInfo.NetMask, k.NetInfo.GateWay = s[0], s[1], s[2], s[3]
