@@ -138,9 +138,7 @@ runvm spec
 
 ### Running Virtual Machines
 
-Assuming you have an OCI bundle from the previous step you can execute the container in two different ways.
-
-The first way is to use the convenience command `run` that will handle creating, starting, and deleting the container after it exits.
+Assuming you have an OCI bundle from the previous step,
 
 ```bash
 cd /mycontainer
@@ -149,27 +147,6 @@ runvm run mycontainerid
 ```
 
 This release does not support getting a shell inside running VM.
-
-```bash
-cd /mycontainer
-
-runvm create mycontainerid
-
-# view the container is created and in the "created" state
-runvm list
-
-# start the process inside the container
-runvm start mycontainerid
-
-# after 5 seconds view that the container has exited and is now in the stopped state
-runvm list
-
-# now delete the container
-runvm delete mycontainerid
-```
-
-This adds more complexity but allows higher level systems to manage runvm and provides points in the containers creation to setup various settings after the container has created and/or before it is deleted.
-This is commonly used to setup the container's network stack after `create` but before `start` where the user's defined process will be running.
 
 ### Running the test suite
 
