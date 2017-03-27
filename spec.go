@@ -79,7 +79,7 @@ container on your host.`,
 				Terminal: true,
 				User:     specs.User{},
 				Args: []string{
-					"/bin/ls",
+					"sh",
 				},
 				Env: []string{
 					"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
