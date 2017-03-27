@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"encoding/xml"
 	"path/filepath"
+	"errors"
 )
 
 func DeltaDiskImgPath(diskPath string) string{
@@ -145,16 +146,25 @@ network-interfaces: |
 
 func (k *VirtualMachineParams) NetworkInfo() error {
 	dir, err := filepath.Abs(filepath.Dir(os.Args[0]))
+	if err != nil {
+		return err
+	}
+
 	cmdName := dir + "/netinfo.sh"
 	cmdArgs := []string{k.NetworkNSPath}
 	cmdOut, err := exec.Command(cmdName, cmdArgs...).Output()
 	if err != nil {
-		fmt.Println(os.Stderr, "There was an error running the command: ", err)
+		return err
 
 	}
 	out := string(cmdOut)
 	s := strings.Split(out, ",")
-	k.NetInfo.IpAddr, k.NetInfo.MacAddr, k.NetInfo.NetMask, k.NetInfo.GateWay = s[0], s[1], s[2], s[3]
+	if len(s) == 4 {
+		k.NetInfo.IpAddr, k.NetInfo.MacAddr, k.NetInfo.NetMask, k.NetInfo.GateWay = s[0], s[1], s[2], s[3]
+	} else {
+		return errors.New("Parsing the output of netinfo script failed. "+ out)
+	}
+
 	return err
 }
 
@@ -250,19 +260,22 @@ func (k *VirtualMachineParams) DomainXml() (string, error) {
 	dom.Devices.Controller = append(dom.Devices.Controller, storageController)
 
 	macAddress := k.NetInfo.MacAddr
-	networkInterface := nic{
-		Type: "bridge",
-		Mac: nicmac{
-			Address: macAddress,
-		},
-		Source: nicsrc{
-			Bridge: "docker0",
-		},
-		Model: nicmodel{
-			Type: "virtio",
-		},
+	if macAddress != "" {
+		networkInterface := nic{
+			Type: "bridge",
+			Mac: nicmac{
+				Address: macAddress,
+			},
+			Source: nicsrc{
+				Bridge: "docker0",
+			},
+			Model: nicmodel{
+				Type: "virtio",
+			},
+		}
+		dom.Devices.NetworkInterfaces = append(dom.Devices.NetworkInterfaces, networkInterface)
+
 	}
-	dom.Devices.NetworkInterfaces = append(dom.Devices.NetworkInterfaces, networkInterface)
 
 	fs := filesystem{
 		Type:       "mount",

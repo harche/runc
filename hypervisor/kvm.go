@@ -317,8 +317,6 @@ func (k *KVMHypervisor) CreateVM(vmParams VirtualMachineParams) (vm VirtualMachi
 	consoleConn, err = net.DialTimeout("unix", appConsoleSockName, time.Duration(10)*time.Second)
 
 	if err != nil {
-		//logrus.Debugf("failed to connect  ", err.Error())
-		//fmt.Fprint("failed to connect to ", appConsoleSockName, " ", err.Error(), "\n")
 		fmt.Println("failed to get console conn %+v", err)
 
 	}
@@ -356,12 +354,10 @@ func (k *KVMHypervisor) GetVM(id string) (vm VirtualMachine, err error) {
 	kvmVirtualMachine := new(KVMVirtualMachine)
 	domain, err := k.conn.LookupDomainByName(id)
 	if err != nil {
-		fmt.Println("Failed to retrieve domain ", err)
 		return nil, err
 	}
 
 	if domain == nil {
-		fmt.Println("Failed to retrieve valid domain object ", err)
 		return nil, err
 
 	}

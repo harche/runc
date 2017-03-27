@@ -271,11 +271,7 @@ func (r *runner) run(config *specs.Process) (int, error) {
 	vmParams.EnvPath(config.Env)
 
 	vmParams.NetworkNSPath = containerState.NamespacePaths[configs.NEWNET]
-	err = vmParams.NetworkInfo()
-	if err != nil {
-		r.destroy()
-		return -1, err
-	}
+	vmParams.NetworkInfo()
 
 	vmParams.Rootfs = r.container.Config().Rootfs
 
