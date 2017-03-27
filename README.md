@@ -143,45 +143,6 @@ runvm run mycontainerid
 
 If you used the unmodified `runvm spec` template this should give you a `sh` session inside the container.
 
-The second way to start a container is using the specs lifecycle operations.
-This gives you more power over how the container is created and managed while it is running.
-This will also launch the container in the background so you will have to edit the `config.json` to remove the `terminal` setting for the simple examples here.
-Your process field in the `config.json` should look like this below with `"terminal": false` and `"args": ["sleep", "5"]`.
-
-
-```json
-        "process": {
-                "terminal": false,
-                "user": {
-                        "uid": 0,
-                        "gid": 0
-                },
-                "args": [
-                        "sleep", "5"
-                ],
-                "env": [
-                        "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
-                        "TERM=xterm"
-                ],
-                "cwd": "/",
-                "capabilities": [
-                        "CAP_AUDIT_WRITE",
-                        "CAP_KILL",
-                        "CAP_NET_BIND_SERVICE"
-                ],
-                "rlimits": [
-                        {
-                                "type": "RLIMIT_NOFILE",
-                                "hard": 1024,
-                                "soft": 1024
-                        }
-                ],
-                "noNewPrivileges": true
-        },
-```
-
-Now we can go though the lifecycle operations in your shell.
-
 
 ```bash
 cd /mycontainer
