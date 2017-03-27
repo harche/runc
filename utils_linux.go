@@ -215,39 +215,16 @@ func (r *runner) run(config *specs.Process) (int, error) {
 		process.ExtraFiles = append(process.ExtraFiles, r.listenFDs...)
 	}
 
-	rootuid, err := r.container.Config().HostUID()
-	if err != nil {
-		r.destroy()
-		return -1, err
-	}
-	rootgid, err := r.container.Config().HostGID()
-	if err != nil {
-		r.destroy()
-		return -1, err
-	}
-	tty, err := setupIO(process, rootuid, rootgid, r.console, config.Terminal, r.detach || r.create)
-	if err != nil {
-		r.destroy()
-		return -1, err
-	}
-	handler := newSignalHandler(tty, r.enableSubreaper)
-
 	startFn := r.container.Start
 	if !r.create {
 		startFn = r.container.Run
 	}
 
-	defer tty.Close()
 	if err := startFn(process); err != nil {
 		r.destroy()
 		return -1, err
 	}
 
-	if err := tty.ClosePostStart(); err != nil {
-		r.terminate(process)
-		r.destroy()
-		return -1, err
-	}
 	if r.pidFile != "" {
 		if err := createPidFile(r.pidFile, process); err != nil {
 			r.terminate(process)
@@ -262,7 +239,7 @@ func (r *runner) run(config *specs.Process) (int, error) {
 		return -1, err
 	}
 
-	// ISOLATED
+	// Isolated containers - launch VM
 	hyperVisor, err := hypervisor.HypFactory()
 
 	vmParams := new(hypervisor.VirtualMachineParams)
@@ -284,13 +261,9 @@ func (r *runner) run(config *specs.Process) (int, error) {
 	if r.detach || r.create {
 		return 0, nil
 	}
-	status, err := handler.forward(process)
-	if err != nil {
-		r.terminate(process)
-	}
 
 	r.destroy()
-	return status, err
+	return 0, err
 }
 
 
