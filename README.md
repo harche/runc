@@ -111,6 +111,9 @@ Docker deamon restart is *NOT* required for launching containers simultaenously 
 `runc` and `runvm`
 
 
+### Current Limitations
+1. No Interactive shell support
+
 ### Running the test suite
 
 `runvm` currently supports running its test suite via Docker.
