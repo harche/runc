@@ -111,43 +111,6 @@ Docker deamon restart is *NOT* required for launching containers simultaenously 
 `runc` and `runvm`
 
 
-### Creating an OCI Bundle
-
-In order to use runvm you must have your container in the format of an OCI bundle.
-If you have Docker installed you can use its `export` method to acquire a root filesystem from an existing Docker container.
-
-```bash
-# create the top most bundle directory
-mkdir /mycontainer
-cd /mycontainer
-
-# create the rootfs directory
-mkdir rootfs
-
-# export busybox via Docker into the rootfs directory
-docker export $(docker create busybox) | tar -C rootfs -xvf -
-```
-
-After a root filesystem is populated you just generate a spec in the format of a `config.json` file inside your bundle.
-`runvm` provides a `spec` command to generate a base template spec that you are then able to edit.
-To find features and documentation for fields in the spec please refer to the [specs](https://github.com/opencontainers/runtime-spec) repository.
-
-```bash
-runvm spec
-```
-
-### Running Virtual Machines
-
-Assuming you have an OCI bundle from the previous step,
-
-```bash
-cd /mycontainer
-
-runvm run mycontainerid
-```
-
-This release does not support getting a shell inside running VM.
-
 ### Running the test suite
 
 `runvm` currently supports running its test suite via Docker.
