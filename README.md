@@ -114,6 +114,8 @@ Docker deamon restart is *NOT* required for launching containers simultaenously 
 
 ### Current Limitations
 1. No Interactive shell support
+2. Docker exec won't work as no new processes are allowed to start inside a running VM
+3. Docker attach won't work.
 
 ### Running the test suite
 
