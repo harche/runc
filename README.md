@@ -19,7 +19,8 @@ Otherwise, if you do not want to build `runvm` with seccomp support you can add 
 ```bash
 # create a 'github.com/harche' in your GOPATH/src
 cd github.com/harche
-git clone https://github.com/harche/runvm
+git clone -b docker_runc https://github.com/harche/runvm.git
+
 cd runvm
 
 make
