@@ -86,14 +86,15 @@ following will output a list of processes running in the container:
 		},
 	},
 	Action: func(context *cli.Context) error {
-		if os.Geteuid() != 0 {
-			return fmt.Errorf("runc should be run as root")
-		}
-		status, err := execProcess(context)
-		if err == nil {
-			os.Exit(status)
-		}
-		return fmt.Errorf("exec failed: %v", err)
+		return fmt.Errorf("exec is not supported on runvm")
+		//if os.Geteuid() != 0 {
+		//	return fmt.Errorf("runc should be run as root")
+		//}
+		//status, err := execProcess(context)
+		//if err == nil {
+		//	os.Exit(status)
+		//}
+		//return fmt.Errorf("exec failed: %v", err)
 	},
 	SkipArgReorder: true,
 }
