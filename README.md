@@ -45,6 +45,7 @@ apt-get install libvirt-bin
 apt-get install qemu-system 
 apt-get install qemu-system-<arch>
 apt-get install qemu-utils
+apt-get install util-linux
 ```
 
 Fedora
@@ -54,6 +55,7 @@ yum install qemu-kvm
 yum install qemu-img
 yum install qemu-kvm-tools
 yum install libvirt-devel
+yum install util-linux
 ```
 
 Download virtual machine image from,
