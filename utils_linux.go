@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"crypto/sha1"
 	"syscall"
 
 	"github.com/Sirupsen/logrus"
@@ -21,6 +22,8 @@ import (
 	"github.com/opencontainers/runc/libcontainer/specconv"
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/urfave/cli"
+	"io"
+	"encoding/hex"
 )
 
 var errEmptyID = errors.New("container id cannot be empty")
@@ -240,6 +243,13 @@ func (r *runner) run(config *specs.Process) (int, error) {
 	}
 
 	// Isolated containers - launch VM
+
+	err = verifyImage()
+	if err != nil {
+		r.destroy()
+		return -1, err
+	}
+
 	hyperVisor, err := hypervisor.HypFactory()
 
 	vmParams := new(hypervisor.VirtualMachineParams)
@@ -270,6 +280,33 @@ func (r *runner) run(config *specs.Process) (int, error) {
 	return 0, err
 }
 
+func verifyImage() error {
+	diskFile, err := os.Open(hypervisor.OriginalDiskPath)
+	if err != nil {
+		return err
+	}
+	defer diskFile.Close()
+
+	h := sha1.New()
+	if _, err := io.Copy(h, diskFile); err != nil {
+		return err
+	}
+
+	hashInBytes := h.Sum(nil)[:20]
+	sumString := hex.EncodeToString(hashInBytes)
+	config, err := hypervisor.ParseConfig()
+	if err != nil {
+		return err
+	}
+
+	parsedSha1Sum := config.Sha1Sum
+
+	if sumString != parsedSha1Sum {
+		return errors.New("SHA1 sum is not valid.")
+	}
+
+	return nil
+}
 
 func (r *runner) destroy() {
 	if r.shouldDestroy {
