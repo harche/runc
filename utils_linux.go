@@ -8,6 +8,7 @@ import (
 	"fmt"
 
 	"os"
+	"os/signal"
 	"path/filepath"
 	"strconv"
 	"crypto/sha1"
@@ -208,6 +209,20 @@ type runner struct {
 
 func (r *runner) run(config *specs.Process) (int, error) {
 	process, err := newProcess(*config)
+
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+	go func(){
+		for sig := range c {
+			//ISOLATED
+			fmt.Println(sig)
+			hyperVisor, err := hypervisor.HypFactory()
+			virtualMachine, err := hyperVisor.GetVM(r.container.ID())
+			if err == nil {
+				virtualMachine.Kill()
+			}
+		}
+	}()
 
 	if err != nil {
 		r.destroy()

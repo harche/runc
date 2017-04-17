@@ -226,7 +226,12 @@ func (k *KVMVirtualMachine) Start() error {
 }
 
 func (k *KVMVirtualMachine) Stop() error {
-	panic("implement me")
+	err := k.domain.Destroy()
+	if err != nil {
+		fmt.Println("Fail to start qemu isolated container ", err)
+		return err
+	}
+	return nil
 }
 
 func (k *KVMVirtualMachine) Shutdown() error {
@@ -234,7 +239,11 @@ func (k *KVMVirtualMachine) Shutdown() error {
 }
 
 func (k *KVMVirtualMachine) Kill() error {
-	panic("implement me")
+	err := k.Stop()
+	if err == nil {
+		err = k.Remove()
+	}
+	return err
 }
 
 func (k *KVMVirtualMachine) Remove() error {
