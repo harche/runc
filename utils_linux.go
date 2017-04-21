@@ -269,6 +269,7 @@ func (r *runner) run(config *specs.Process) (int, error) {
 
 	vmParams := new(hypervisor.VirtualMachineParams)
 	vmParams.Id = r.container.ID()
+        vmParams.Detach = r.detach
 	vmParams.Args = config.Args
 	vmParams.EnvPath(config.Env)
 

@@ -56,6 +56,7 @@ type NetInfo struct {
 type VirtualMachineParams struct {
 	Id      string
 	NetInfo NetInfo
+        Detach  bool
 	Args    []string
 	Path    string
 	Rootfs  string

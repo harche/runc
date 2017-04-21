@@ -333,18 +333,19 @@ func (k *KVMHypervisor) CreateVM(vmParams VirtualMachineParams) (vm VirtualMachi
 	reader := bufio.NewReaderSize(consoleConn, 256)
 
 	cout := make(chan string, 128)
-	go ConsoleReader(reader, cout)
+        if !vmParams.Detach{
+	    go ConsoleReader(reader, cout)
 
-	for {
-		line, ok := <-cout
-		if ok {
-			//fmt.Fprintln(stdout, line)
-			fmt.Println(line)
-		} else {
-			break
-		}
-	}
-
+	    for {
+		    line, ok := <-cout
+		    if ok {
+			    //fmt.Fprintln(stdout, line)
+			    fmt.Println(line)
+		    } else {
+			    break
+		    }
+	    }
+     }
 	return nil, nil
 }
 
