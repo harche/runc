@@ -56,6 +56,7 @@ type NetInfo struct {
 type VirtualMachineParams struct {
 	Id      string
 	NetInfo NetInfo
+        Detach  bool
 	Args    []string
 	Path    string
 	Rootfs  string
@@ -67,7 +68,7 @@ type VirtualMachineParams struct {
 
 type Hypervisor interface {
 	GetConnection(url string) (conn interface{}, err error)
-	CreateVM(vmParams VirtualMachineParams, isDetach bool) (vm VirtualMachine, err error)
+	CreateVM(vmParams VirtualMachineParams) (vm VirtualMachine, err error)
 	GetVM(id string) (vm VirtualMachine, err error)
 }
 

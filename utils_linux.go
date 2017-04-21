@@ -254,6 +254,7 @@ func (r *runner) run(config *specs.Process) (int, error) {
 
 	vmParams := new(hypervisor.VirtualMachineParams)
 	vmParams.Id = r.container.ID()
+        vmParams.Detach = r.detach
 	vmParams.Args = config.Args
 	vmParams.EnvPath(config.Env)
 
@@ -266,7 +267,7 @@ func (r *runner) run(config *specs.Process) (int, error) {
 
 	vmParams.Rootfs = r.container.Config().Rootfs
 
-	_, err = hyperVisor.CreateVM(*vmParams, r.detach)
+	_, err = hyperVisor.CreateVM(*vmParams)
 	if err != nil {
 		r.destroy()
 		return -1, err
