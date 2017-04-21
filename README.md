@@ -1,8 +1,15 @@
 ## runvm
 
-`runvm` (pronounced as `run vm`) is a CLI tool for spawning and running virtual machines using docker images. runvm 
+`runvm` (pronounced as `run vm`) is a container runtime for spawning and running virtual machines using docker images. runvm 
 allows you to use vastly available docker images and execute the code inside a secure virtual machine using 
 standard OCI compliant docker runtime. 
+
+`runvm` is aimed at achieving higher isolation for the application running inside containers using Qemu. Higher isolation is useful for applications which require the agility of containers but strong isolation provided by virtual machines, such as smart contract execution by blockchain (such as Hyperledger). 
+
+`runvm` uses verified and optimized `cloud-init` based VM image to run the application. 
+ Before running the VM, `runvm` verifies the VM image's SHA-1 hash. The execution proceeds
+ only if the hash is verified.
+
 
 ## Building
 
