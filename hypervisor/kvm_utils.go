@@ -201,7 +201,6 @@ func (k *VirtualMachineParams) DomainXml() (string, error) {
 
 	dom.SecLabel.Type = "none"
 
-	dom.CPU.Mode = "host-model"
 
 	dom.OnPowerOff = "destroy"
 	dom.OnReboot = "destroy"
