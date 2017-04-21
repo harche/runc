@@ -266,7 +266,7 @@ func (r *runner) run(config *specs.Process) (int, error) {
 
 	vmParams.Rootfs = r.container.Config().Rootfs
 
-	_, err = hyperVisor.CreateVM(*vmParams)
+	_, err = hyperVisor.CreateVM(*vmParams, r.detach)
 	if err != nil {
 		r.destroy()
 		return -1, err
