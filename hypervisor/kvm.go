@@ -276,7 +276,7 @@ func (k *KVMHypervisor) GetConnection(url string) (conn interface{}, err error) 
 	return k.conn, nil
 }
 
-func (k *KVMHypervisor) CreateVM(vmParams VirtualMachineParams) (vm VirtualMachine, err error) {
+func (k *KVMHypervisor) CreateVM(vmParams VirtualMachineParams, isDetach bool) (vm VirtualMachine, err error) {
 
 	vmParams.DiskDir, err = createQemuDir(vmParams.Id, err)
 	if err != nil {
@@ -333,18 +333,19 @@ func (k *KVMHypervisor) CreateVM(vmParams VirtualMachineParams) (vm VirtualMachi
 	reader := bufio.NewReaderSize(consoleConn, 256)
 
 	cout := make(chan string, 128)
-	go ConsoleReader(reader, cout)
+        if !isDetach{
+	    go ConsoleReader(reader, cout)
 
-	for {
-		line, ok := <-cout
-		if ok {
-			//fmt.Fprintln(stdout, line)
-			fmt.Println(line)
-		} else {
-			break
-		}
-	}
-
+	    for {
+		    line, ok := <-cout
+		    if ok {
+			    //fmt.Fprintln(stdout, line)
+			    fmt.Println(line)
+		    } else {
+			    break
+		    }
+	    }
+     }
 	return nil, nil
 }
 
