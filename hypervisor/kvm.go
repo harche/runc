@@ -202,7 +202,7 @@ type KVMVirtualMachine struct {
 func (k *KVMVirtualMachine) Suspend() error {
 	err := k.domain.Suspend()
 	if err != nil {
-		fmt.Println("Fail to start qemu isolated container ", err)
+		fmt.Println("Fail to suspend qemu isolated container ", err)
 		return err
 	}
 	return nil
@@ -211,7 +211,7 @@ func (k *KVMVirtualMachine) Suspend() error {
 func (k *KVMVirtualMachine) Resume() error {
 	err := k.domain.Resume()
 	if err != nil {
-		fmt.Println("Fail to start qemu isolated container ", err)
+		fmt.Println("Fail to resume qemu isolated container ", err)
 		return err
 	}
 	return nil
@@ -228,7 +228,7 @@ func (k *KVMVirtualMachine) Start() error {
 func (k *KVMVirtualMachine) Stop() error {
 	err := k.domain.Destroy()
 	if err != nil {
-		fmt.Println("Fail to start qemu isolated container ", err)
+		fmt.Println("Fail to stop qemu isolated container ", err)
 		return err
 	}
 	return nil
@@ -249,7 +249,7 @@ func (k *KVMVirtualMachine) Kill() error {
 func (k *KVMVirtualMachine) Remove() error {
 	err := k.domain.Undefine()
 	if err != nil {
-		fmt.Println("Fail to start qemu isolated container ", err)
+		fmt.Println("Fail to remove qemu isolated container ", err)
 		return err
 	}
 
@@ -271,7 +271,7 @@ type KVMHypervisor struct{
 func (k *KVMHypervisor) GetConnection(url string) (conn interface{}, err error) {
 	k.conn, err = libvirt.NewConnect(url)
 	if err != nil {
-		fmt.Errorf("Failed")
+		fmt.Errorf("Failed to get connection to qemu.")
 	}
 	return k.conn, nil
 }
@@ -285,17 +285,17 @@ func (k *KVMHypervisor) CreateVM(vmParams VirtualMachineParams) (vm VirtualMachi
 
 	_ , err = vmParams.CreateDeltaDiskImage()
 	if err != nil {
-		fmt.Errorf("Could not create directory /var/run/docker-qemu/%s : %s", vmParams.Id, err)
+		fmt.Errorf("Could not create delta disk for vm %s : %s", vmParams.Id, err)
 	}
 
 	_ , err = vmParams.CreateSeedImage()
 	if err != nil {
-		fmt.Errorf("Could not create directory /var/run/docker-qemu/%s : %s", vmParams.Id, err)
+		fmt.Errorf("Could not create seed image for vm %s : %s", vmParams.Id, err)
 	}
 
 	domainXml, err := vmParams.DomainXml()
 	if err != nil {
-		fmt.Errorf("Could not create directory /var/run/docker-qemu/%s : %s", vmParams.Id, err)
+		fmt.Errorf("Could not create domain xml for vm %s : %s", vmParams.Id, err)
 	}
 
 	KVMConnection(k)
@@ -303,19 +303,19 @@ func (k *KVMHypervisor) CreateVM(vmParams VirtualMachineParams) (vm VirtualMachi
 	
 	domain, err := k.conn.DomainDefineXML(domainXml)
 	if err != nil {
-		fmt.Println("FAILED DOMAIN FAILED 1 %+v", err)
+		fmt.Println("Could not define domain xml for vm %s : %+v",vmParams.Id, err)
 		return nil, err
 
 
 	}
 
 	if domain == nil {
-		fmt.Println("FAILED DOMAIN NIL")
+		fmt.Println("domain cannot be null for vm %s", vmParams.Id)
 	}
 
 	err = domain.Create()
 	if err != nil {
-		fmt.Println("FAILED DOMAIN FAILED 2 %+v", err)
+		fmt.Println("Cannot create domain for vm %s : %+v", vmParams.Id, err)
 		return nil, err
 
 	}
