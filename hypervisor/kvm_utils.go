@@ -11,6 +11,7 @@ import (
 	"encoding/xml"
 	"path/filepath"
 	"errors"
+	"regexp"
 )
 
 func DeltaDiskImgPath(diskPath string) string{
@@ -78,6 +79,7 @@ runcmd:
  - mount -t 9p -o trans=virtio share_dir /mnt
  - export PATH=%s
  - hostname %s
+ MOUNT_PLACEHOLDER
  - chroot /mnt %s > /dev/hvc1 2>&1
  - init 0
 `
@@ -106,7 +108,29 @@ network-interfaces: |
 
 	}
 
-	userData := []byte(fmt.Sprintf(userDataString, k.Path, k.Id, command))
+	userDataString = fmt.Sprintf(userDataString, k.Path, k.Id, command)
+
+	r := regexp.MustCompile("MOUNT_PLACEHOLDER")
+	m := regexp.MustCompile("/")
+
+	if len(k.Mounts) == 0 {
+		userDataString = r.ReplaceAllString(userDataString, "")
+		n := regexp.MustCompile("\n\n")
+		userDataString = n.ReplaceAllString(userDataString, "\n")
+	} else {
+		var mountString string
+		var mountStringSlice []string
+		for _, destination := range k.Mounts {
+			mountStringSlice = append(mountStringSlice, " - mkdir -p /mnt" + destination)
+			mountLabel := m.ReplaceAllString(destination, "_")
+			mountStringSlice = append(mountStringSlice, " - mount "+ mountLabel+" /mnt"+destination+" -t 9p -o trans=virtio")
+		}
+
+		mountString = strings.Join(mountStringSlice, "\n")
+		userDataString = r.ReplaceAllString(userDataString, mountString)
+	}
+	
+	userData := []byte(userDataString)
 	metaData := []byte(fmt.Sprintf(metaDataString, k.NetInfo.IpAddr, k.NetInfo.NetMask, k.NetInfo.GateWay))
 
 	currentDir, err := os.Getwd()
@@ -289,6 +313,23 @@ func (k *VirtualMachineParams) DomainXml() (string, error) {
 		},
 	}
 	dom.Devices.Filesystems = append(dom.Devices.Filesystems, fs)
+
+	for source, destination := range k.Mounts {
+		m := regexp.MustCompile("/")
+		mountLabel := m.ReplaceAllString(destination, "_")
+		fs := filesystem{
+			Type:       "mount",
+			Accessmode: "passthrough",
+			Source: fspath{
+				//Dir: r.container.Config().Rootfs,
+				Dir : source,
+			},
+			Target: fspath{
+				Dir: mountLabel,
+			},
+		}
+		dom.Devices.Filesystems = append(dom.Devices.Filesystems, fs)
+	}
 
 	serialConsole := console{
 		Type: "unix",

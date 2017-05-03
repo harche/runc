@@ -62,6 +62,7 @@ type VirtualMachineParams struct {
 	Rootfs  string
 	DiskDir string
 	NetworkNSPath string
+	Mounts  map[string]string
 }
 
 

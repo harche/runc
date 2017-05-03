@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"crypto/sha1"
 	"syscall"
+	"strings"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/coreos/go-systemd/activation"
@@ -258,12 +259,12 @@ func (r *runner) run(config *specs.Process) (int, error) {
 	}
 
 	// Isolated containers - launch VM
-
-	err = verifyImage()
-	if err != nil {
-		r.destroy()
-		return -1, err
-	}
+	//
+	//err = verifyImage()
+	//if err != nil {
+	//	r.destroy()
+	//	return -1, err
+	//}
 
 	hyperVisor, err := hypervisor.HypFactory()
 
@@ -281,6 +282,15 @@ func (r *runner) run(config *specs.Process) (int, error) {
 	}
 
 	vmParams.Rootfs = r.container.Config().Rootfs
+
+	mountPoints := make(map[string]string)
+	for _, mount := range r.container.Config().Mounts{
+		if strings.HasPrefix(mount.Source, "/") && len(mount.PropagationFlags) == 0 {
+			mountPoints[mount.Source] = mount.Destination
+		}
+	}
+
+	vmParams.Mounts = mountPoints
 
 	_, err = hyperVisor.CreateVM(*vmParams)
 	if err != nil {
