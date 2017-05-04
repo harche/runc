@@ -42,7 +42,7 @@ type containerState struct {
 
 var listCommand = cli.Command{
 	Name:  "list",
-	Usage: "lists containers started by runc with the given root",
+	Usage: "lists containers started by runvm with the given root",
 	ArgsUsage: `
 
 Where the given root is specified via the global option "--root"
