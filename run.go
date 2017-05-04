@@ -11,11 +11,11 @@ import (
 // default action is to start a container
 var runCommand = cli.Command{
 	Name:  "run",
-	Usage: "create and run a container",
+	Usage: "create and run a virtual machine",
 	ArgsUsage: `<container-id>
 
 Where "<container-id>" is your name for the instance of the container that you
-are starting. The name you provide for the container instance must be unique on
+are starting. The name you provide for the virtual machine must be unique on
 your host.`,
 	Description: `The run command creates an instance of a container for a bundle. The bundle
 is a directory with a specification file named "` + specConfig + `" and a root
