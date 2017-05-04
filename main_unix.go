@@ -20,7 +20,7 @@ func init() {
 
 var initCommand = cli.Command{
 	Name:  "init",
-	Usage: `initialize the namespaces and launch the process (do not call it outside of runc)`,
+	Usage: `Operation not supported on runvm`,
 	Action: func(context *cli.Context) error {
 		factory, _ := libcontainer.New("")
 		if err := factory.StartInitialization(); err != nil {
