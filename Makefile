@@ -94,6 +94,7 @@ localintegration: all
 
 install:
 	install -D -m0755 runvm $(BINDIR)/runvm
+	install -D -m0755 hypervisor/config.json /etc/runvm/config.json
 
 install-bash:
 	install -D -m0644 contrib/completions/bash/runc $(PREFIX)/share/bash-completion/completions/runc
@@ -104,6 +105,7 @@ install-man:
 
 uninstall:
 	rm -f $(BINDIR)/runvm
+	rm -rf /etc/runvm
 
 uninstall-bash:
 	rm -f $(PREFIX)/share/bash-completion/completions/runc

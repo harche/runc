@@ -21,7 +21,10 @@ func ParseConfig() (config *Configuration, err error) {
 
 	file, err := os.Open(dir+"/hypervisor/config.json")
 	if err != nil {
-		return nil, err
+		file, err = os.Open("/etc/runvm/config.json")
+		if err != nil {
+			return nil, err
+		}
 	}
 	defer file.Close()
 
