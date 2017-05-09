@@ -75,13 +75,16 @@ func (k *VirtualMachineParams) CreateSeedImage() (string, error) {
 
 	// Create user-data to be included in seed.img
 	userDataString := `#cloud-config
+user: root
+password: passw0rd
+chpasswd: { expire: False }
+ssh_pwauth: True
 runcmd:
  - mount -t 9p -o trans=virtio share_dir /mnt
  - export PATH=%s
  - hostname %s
  MOUNT_PLACEHOLDER
  - chroot /mnt %s > /dev/hvc1 2>&1
- - init 0
 `
 
 	metaDataString := `#cloud-config
@@ -301,6 +304,7 @@ func (k *VirtualMachineParams) DomainXml() (string, error) {
 
 	}
 
+	dom.Devices.Graphics = graphics{Type:"vnc", Port:"-1"}
 	fs := filesystem{
 		Type:       "mount",
 		Accessmode: "passthrough",

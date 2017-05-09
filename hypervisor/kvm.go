@@ -150,7 +150,15 @@ type device struct {
 	Consoles          []console    `xml:"console"`
 	NetworkInterfaces []nic        `xml:"interface"`
 	Controller        []controller `xml:"controller"`
+	Graphics          graphics     `xml:"graphics"`
 }
+
+type graphics struct {
+	Type   string   `xml:"type,attr"`
+	Port   string   `xml:"port,attr"`
+}
+
+
 
 type seclab struct {
 	Type string `xml:"type,attr"`
