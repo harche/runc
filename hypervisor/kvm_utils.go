@@ -81,12 +81,16 @@ chpasswd: { expire: False }
 ssh_pwauth: True
 runcmd:
  - mount -t 9p -o trans=virtio share_dir /mnt
- - export PATH=%s
  - hostname %s
  MOUNT_PLACEHOLDER
- - chroot /mnt %s > /dev/hvc1 2>&1
+ - mkdir /cdrom
+ - mount /dev/cdrom /cdrom
+ - cp -p /cdrom/execute.sh /mnt/.
+ - cp -p /cdrom/path.env /mnt/.
+ - chroot /mnt /execute.sh > /dev/hvc1 2>&1
 `
 
+	pathString := `export PATH=%s`
 	metaDataString := `#cloud-config
 network-interfaces: |
   auto eth0
@@ -96,6 +100,24 @@ network-interfaces: |
   gateway %s
 `
 
+	systemdString := `[Unit]
+Description=Sample Systemd
+After=cloud-init.service
+
+[Service]
+Type=oneshot
+ExecStart=/home/ubuntu/try.sh
+ExecStop=poweroff
+
+[Install]
+WantedBy=multi-user.target
+`
+
+	scriptContent := `#!/bin/sh
+export PATH=%s
+cd %s
+%s
+`
 	var command string
 	if len(k.Args) > 0 {
 		args := []string{}
@@ -111,7 +133,7 @@ network-interfaces: |
 
 	}
 
-	userDataString = fmt.Sprintf(userDataString, k.Path, k.Id, command)
+	userDataString = fmt.Sprintf(userDataString, k.Id)
 
 	r := regexp.MustCompile("MOUNT_PLACEHOLDER")
 	m := regexp.MustCompile("/")
@@ -132,7 +154,10 @@ network-interfaces: |
 		mountString = strings.Join(mountStringSlice, "\n")
 		userDataString = r.ReplaceAllString(userDataString, mountString)
 	}
-	
+
+	systemdData := []byte(systemdString)
+	pathData := []byte(fmt.Sprintf(pathString, k.Path))
+	scriptData := []byte(fmt.Sprintf(scriptContent, k.Path, k.CwD, command))
 	userData := []byte(userDataString)
 	metaData := []byte(fmt.Sprintf(metaDataString, k.NetInfo.IpAddr, k.NetInfo.NetMask, k.NetInfo.GateWay))
 
@@ -148,17 +173,29 @@ network-interfaces: |
 
 	writeErrorUserData := ioutil.WriteFile("user-data", userData, 0700)
 	if writeErrorUserData != nil {
-		//return "", fmt.Errorf("Could not write user-data to /var/run/docker-qemu/%s", lc.container.ID)
-		return "", fmt.Errorf("Could not write user-data to /var/run/docker-qemu/%s", "DDDDD")
+		return "", fmt.Errorf("Could not write user-data for %s", k.Id)
 	}
 
 	writeErrorMetaData := ioutil.WriteFile("meta-data", metaData, 0700)
 	if writeErrorMetaData != nil {
-		//return "", fmt.Errorf("Could not write meta-data to /var/run/docker-qemu/%s", lc.container.ID)
-		return "", fmt.Errorf("Could not write meta-data to /var/run/docker-qemu/%s", "DDDD")
+		return "", fmt.Errorf("Could not write meta-data for %s", k.Id)
 	}
 
-	err = exec.Command(getisoimagePath, "-output", "seed.img", "-volid", "cidata", "-joliet", "-rock", "user-data", "meta-data").Run()
+	writeErrorSystemdData := ioutil.WriteFile("systemd-data", systemdData, 0700)
+	if writeErrorSystemdData != nil {
+		return "", fmt.Errorf("Could not write systemd-data for %s", k.Id)
+	}
+
+	writeErrorScriptData := ioutil.WriteFile("execute.sh", scriptData, 0700)
+	if writeErrorScriptData != nil {
+		return "", fmt.Errorf("Could not write systemd-data for %s", k.Id)
+	}
+
+	writeErrorPathData := ioutil.WriteFile("path.env", pathData, 0700)
+	if writeErrorPathData != nil {
+		return "", fmt.Errorf("Could not write path.env for %s", k.Id)
+	}
+	err = exec.Command(getisoimagePath, "-output", "seed.img", "-volid", "cidata", "-joliet", "-rock", "user-data", "meta-data", "systemd-data", "execute.sh", "path.env").Run()
 	if err != nil {
 		return "", fmt.Errorf("Could not execute genisoimage")
 	}

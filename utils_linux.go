@@ -266,6 +266,7 @@ func (r *runner) run(config *specs.Process) (int, error) {
 	//	return -1, err
 	//}
 
+
 	hyperVisor, err := hypervisor.HypFactory()
 
 	vmParams := new(hypervisor.VirtualMachineParams)
@@ -273,6 +274,7 @@ func (r *runner) run(config *specs.Process) (int, error) {
         vmParams.Detach = r.detach
 	vmParams.Args = config.Args
 	vmParams.EnvPath(config.Env)
+	vmParams.CwD = config.Cwd
 
 	vmParams.NetworkNSPath = containerState.NamespacePaths[configs.NEWNET]
 	vmParams.NetworkInfo()

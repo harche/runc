@@ -66,6 +66,7 @@ type VirtualMachineParams struct {
 	DiskDir string
 	NetworkNSPath string
 	Mounts  map[string]string
+	CwD	string
 }
 
 
