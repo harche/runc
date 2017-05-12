@@ -86,7 +86,9 @@ runcmd:
  - mkdir /cdrom
  - mount /dev/cdrom /cdrom
  - cp -p /cdrom/execute.sh /mnt/.
- - chroot /mnt /execute.sh > /dev/hvc1 2>&1
+ - cp -p /cdrom/systemd-data  /etc/systemd/system/myscript.service
+ - systemctl enable myscript
+ - service myscript start
 `
 
 	metaDataString := `#cloud-config
@@ -104,7 +106,7 @@ After=cloud-init.service
 
 [Service]
 Type=oneshot
-ExecStart=/home/ubuntu/try.sh
+ExecStart=/usr/sbin/chroot /mnt /execute.sh > /dev/hvc1 2>&1
 ExecStop=poweroff
 
 [Install]
