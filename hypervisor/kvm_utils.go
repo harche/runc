@@ -86,11 +86,9 @@ runcmd:
  - mkdir /cdrom
  - mount /dev/cdrom /cdrom
  - cp -p /cdrom/execute.sh /mnt/.
- - cp -p /cdrom/path.env /mnt/.
  - chroot /mnt /execute.sh > /dev/hvc1 2>&1
 `
 
-	pathString := `export PATH=%s`
 	metaDataString := `#cloud-config
 network-interfaces: |
   auto eth0
@@ -156,7 +154,6 @@ cd %s
 	}
 
 	systemdData := []byte(systemdString)
-	pathData := []byte(fmt.Sprintf(pathString, k.Path))
 	scriptData := []byte(fmt.Sprintf(scriptContent, k.Path, k.CwD, command))
 	userData := []byte(userDataString)
 	metaData := []byte(fmt.Sprintf(metaDataString, k.NetInfo.IpAddr, k.NetInfo.NetMask, k.NetInfo.GateWay))
@@ -191,11 +188,7 @@ cd %s
 		return "", fmt.Errorf("Could not write systemd-data for %s", k.Id)
 	}
 
-	writeErrorPathData := ioutil.WriteFile("path.env", pathData, 0700)
-	if writeErrorPathData != nil {
-		return "", fmt.Errorf("Could not write path.env for %s", k.Id)
-	}
-	err = exec.Command(getisoimagePath, "-output", "seed.img", "-volid", "cidata", "-joliet", "-rock", "user-data", "meta-data", "systemd-data", "execute.sh", "path.env").Run()
+	err = exec.Command(getisoimagePath, "-output", "seed.img", "-volid", "cidata", "-joliet", "-rock", "user-data", "meta-data", "systemd-data", "execute.sh").Run()
 	if err != nil {
 		return "", fmt.Errorf("Could not execute genisoimage")
 	}
