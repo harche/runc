@@ -87,6 +87,7 @@ runcmd:
  - mount /dev/cdrom /cdrom
  - cp -p /cdrom/execute.sh /mnt/.
  - cp -p /cdrom/systemd-data  /etc/systemd/system/myscript.service
+ - mount --bind /dev/ /mnt/dev
  - systemctl enable myscript
  - service myscript start
 `
@@ -106,7 +107,7 @@ After=cloud-init.service
 
 [Service]
 Type=oneshot
-ExecStart=/usr/sbin/chroot /mnt /execute.sh > /dev/hvc1 2>&1
+ExecStart=/usr/sbin/chroot /mnt /execute.sh
 ExecStop=poweroff
 
 [Install]
@@ -116,7 +117,7 @@ WantedBy=multi-user.target
 	scriptContent := `#!/bin/sh
 export PATH=%s
 cd %s
-%s
+%s > /dev/hvc1 2>&1
 `
 	var command string
 	if len(k.Args) > 0 {
