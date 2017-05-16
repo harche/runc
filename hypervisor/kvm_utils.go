@@ -108,7 +108,7 @@ After=cloud-init.service
 [Service]
 Type=oneshot
 ExecStart=/usr/sbin/chroot /mnt /execute.sh
-ExecStop=poweroff
+ExecStop=/usr/sbin/poweroff -f
 
 [Install]
 WantedBy=multi-user.target
