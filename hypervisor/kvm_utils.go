@@ -88,6 +88,7 @@ runcmd:
  - cp -p /cdrom/execute.sh /mnt/.
  - cp -p /cdrom/systemd-data  /etc/systemd/system/myscript.service
  - mount --bind /dev/ /mnt/dev
+ - mount --bind /proc /mnt/proc
  - systemctl enable myscript
  - service myscript start
 `
