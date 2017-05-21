@@ -59,7 +59,8 @@ func destroy(c *linuxContainer) error {
 	hyperVisor, err := hypervisor.HypFactory()
 	virtualMachine, err := hyperVisor.GetVM(c.ID())
 	if err == nil {
-		err = virtualMachine.Remove()
+		virtualMachine.Kill()
+		virtualMachine.Remove()
 	}
 
 	return err

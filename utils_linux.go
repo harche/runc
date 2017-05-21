@@ -26,6 +26,8 @@ import (
 	"github.com/urfave/cli"
 	"io"
 	"encoding/hex"
+	"time"
+	"io/ioutil"
 )
 
 var errEmptyID = errors.New("container id cannot be empty")
@@ -80,7 +82,7 @@ func getDefaultImagePath(context *cli.Context) string {
 // spec and stdio from the current process.
 func newProcess(p specs.Process) (*libcontainer.Process, error) {
 	// ISOLATED
-	p.Args = []string{"sh"}
+	p.Args = []string{"tail" , "-f", "/dev/stdin"}
 	lp := &libcontainer.Process{
 		Args: p.Args,
 		Env:  p.Env,
@@ -213,7 +215,7 @@ func (r *runner) run(config *specs.Process) (int, error) {
 
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
-	go func(){
+	go func() {
 		for sig := range c {
 			//ISOLATED
 			fmt.Println(sig)
@@ -266,12 +268,11 @@ func (r *runner) run(config *specs.Process) (int, error) {
 	//	return -1, err
 	//}
 
-
 	hyperVisor, err := hypervisor.HypFactory()
 
 	vmParams := new(hypervisor.VirtualMachineParams)
 	vmParams.Id = r.container.ID()
-        vmParams.Detach = r.detach
+	vmParams.Detach = r.detach
 	vmParams.Args = config.Args
 	vmParams.EnvPath(config.Env)
 	vmParams.CwD = config.Cwd
@@ -286,7 +287,7 @@ func (r *runner) run(config *specs.Process) (int, error) {
 	vmParams.Rootfs = r.container.Config().Rootfs
 
 	mountPoints := make(map[string]string)
-	for _, mount := range r.container.Config().Mounts{
+	for _, mount := range r.container.Config().Mounts {
 		if strings.HasPrefix(mount.Source, "/") && len(mount.PropagationFlags) == 0 {
 			mountPoints[mount.Source] = mount.Destination
 		}
@@ -294,15 +295,53 @@ func (r *runner) run(config *specs.Process) (int, error) {
 
 	vmParams.Mounts = mountPoints
 
-	_, err = hyperVisor.CreateVM(*vmParams)
-	if err != nil {
+	fmt.Println("before vm launch")
+	lauchVM := make(chan bool)
+	go func() {
+		_, err = hyperVisor.CreateVM(*vmParams)
+		if err != nil {
+			lauchVM <- false
+		}
+		lauchVM <- true
+	}()
+	fmt.Println("after vm launch")
+	time.Sleep(time.Second*2)
+	pid, _ := process.Pid()
+
+	//procCmdlineFile, _ := os.Open("/proc/"+strconv.Itoa(pid)+"/cmdline")
+
+	for {
+		procCmdlineFile, err := ioutil.ReadFile("/proc/" + strconv.Itoa(pid) + "/cmdline")
+
+		if err != nil {
+			break
+		}
+
+		if _, err := os.Stat("/var/run/libvirt/qemu/"+vmParams.Id+".pid"); os.IsNotExist(err) {
+			r.destroy()
+			break
+		}
+
+		if len(procCmdlineFile) == 0 {
+			r.destroy()
+			break
+		}
+
+		time.Sleep(time.Second*1)
+	}
+
+	if !<-lauchVM{
 		r.destroy()
 		return -1, err
 	}
 
+	fmt.Println("after vm sync")
+
 	if r.detach || r.create {
 		return 0, nil
 	}
+
+
 
 	r.destroy()
 	return 0, err

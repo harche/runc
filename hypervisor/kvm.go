@@ -236,7 +236,6 @@ func (k *KVMVirtualMachine) Start() error {
 func (k *KVMVirtualMachine) Stop() error {
 	err := k.domain.Destroy()
 	if err != nil {
-		fmt.Println("Fail to stop qemu isolated container ", err)
 		return err
 	}
 	return nil
@@ -257,7 +256,6 @@ func (k *KVMVirtualMachine) Kill() error {
 func (k *KVMVirtualMachine) Remove() error {
 	err := k.domain.Undefine()
 	if err != nil {
-		fmt.Println("Fail to remove qemu isolated container ", err)
 		return err
 	}
 
