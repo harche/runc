@@ -95,8 +95,8 @@ runcmd:
 
 	metaDataString := `#cloud-config
 network-interfaces: |
-  auto eth0
-  iface eth0 inet static
+  auto ens4
+  iface ens4 inet static
   address %s
   netmask %s
   gateway %s
@@ -109,7 +109,7 @@ After=cloud-init.service
 [Service]
 Type=oneshot
 ExecStart=/usr/sbin/chroot /mnt /execute.sh
-ExecStop=/usr/sbin/poweroff -f
+ExecStop=/sbin/poweroff -f
 
 [Install]
 WantedBy=multi-user.target

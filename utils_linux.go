@@ -295,7 +295,6 @@ func (r *runner) run(config *specs.Process) (int, error) {
 
 	vmParams.Mounts = mountPoints
 
-	fmt.Println("before vm launch")
 	lauchVM := make(chan bool)
 	go func() {
 		_, err = hyperVisor.CreateVM(*vmParams)
@@ -304,11 +303,9 @@ func (r *runner) run(config *specs.Process) (int, error) {
 		}
 		lauchVM <- true
 	}()
-	fmt.Println("after vm launch")
 	time.Sleep(time.Second*2)
 	pid, _ := process.Pid()
 
-	//procCmdlineFile, _ := os.Open("/proc/"+strconv.Itoa(pid)+"/cmdline")
 
 	for {
 		procCmdlineFile, err := ioutil.ReadFile("/proc/" + strconv.Itoa(pid) + "/cmdline")
@@ -335,7 +332,6 @@ func (r *runner) run(config *specs.Process) (int, error) {
 		return -1, err
 	}
 
-	fmt.Println("after vm sync")
 
 	if r.detach || r.create {
 		return 0, nil
