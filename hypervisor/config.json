@@ -1,0 +1,8 @@
+{
+  "Name": "KVM",
+  "OriginalDiskPath" : "/var/lib/libvirt/images/disk.img.orig",
+  "NumCPU" : 1,
+  "DefaultMaxCpus" : 2,
+  "DefaultMaxMem" : 1024,
+  "DefaultMem" : 1024
+}
